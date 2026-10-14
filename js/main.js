@@ -3,6 +3,7 @@ import { settings, setMode } from './settings.js';
 import { createTuner } from './tuner.js';
 import { createMetronomePanel } from './metronome-panel.js';
 import { initSettingsPanel } from './settings-panel.js';
+import { VERSION } from './version.js';
 
 const tuner = createTuner();
 const metronome = createMetronomePanel();
@@ -35,3 +36,7 @@ Object.keys(TABS).forEach((m) => {
 
 initSettingsPanel({ onChange: tuner.rerender });
 showMode(settings.mode);
+document.getElementById('version').textContent = 'Version ' + VERSION;
+
+// network-first service worker: fresh files after each deploy, works offline
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

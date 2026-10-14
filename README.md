@@ -4,12 +4,33 @@ A cute tuner and metronome for musicians that runs in the browser. Plain HTML/JS
 
 ## Run it
 
-The microphone only works on HTTPS or localhost, so don't double-click a file path in some browsers; serve it:
+The microphone only works on HTTPS or localhost, so serve the folder instead of opening the file:
 
-- VS Code: install the **Live Server** extension, right-click `index.html`, **Open with Live Server**.
-- Or: `npx serve .` in this folder, then open the localhost address.
+```
+npm run serve          # http://localhost:8080/  (no caching, so reloads show your edits)
+```
 
 Allow the microphone, press Start, play or sing a note.
+
+## Test before every deploy
+
+```
+npm install            # once: installs puppeteer-core (dev only, nothing ships with the app)
+npm test               # unit tests + browser tests, must say "all ... passed"
+```
+
+- `npm run test:unit`: pitch detection, note maths, pitch tracker, tempo names (plain Node).
+- `npm run test:browser`: opens the app in your installed Chrome as an Android phone (touch, fake microphone that plays a tone), checks every screen is styled, every control works, the metronome keeps time (one beat per 500 ms at 120 BPM), and nothing is cut off at 412x915, 360x640, 320x568 or landscape. Screenshots go to `tests/screenshots/`.
+
+### On your Android phone, before deploying
+
+1. Phone: Settings > About phone > tap Build number 7 times, then Developer options > USB debugging on. Plug it into the PC.
+2. PC: `npm run serve`, then in Chrome open `chrome://inspect/#devices`, click **Port forwarding**, add `8080` -> `localhost:8080`, tick **Enable port forwarding**.
+3. Phone: open Chrome at `http://localhost:8080/`. It counts as localhost, so the microphone works.
+
+### Deploy
+
+Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a minute or two; the version at the bottom of Settings shows which build a phone is running.
 
 ## What's in it
 
@@ -44,7 +65,7 @@ On the phone: open the link, tap Start, allow the microphone. To get an app icon
 ## Roadmap
 
 1. Host on HTTPS (GitHub Pages or Cloudflare Pages) so it works on a phone.
-2. PWA: offline support (service worker). Manifest and icons are done.
+2. PWA: done (manifest, icons, network-first service worker that also works offline).
 3. Vocalist mode: scrolling real-time pitch line while singing.
 4. Band tools: members, setlists, per-song tempos for the metronome.
 5. Later: wrap for the app stores if it takes off (Google Play about $25 one-time, Apple about $99/year).
@@ -57,6 +78,10 @@ Plain ES modules, loaded by `<script type="module">` (another reason it has to b
 index.html            markup only
 css/styles.css        all styles, background patterns, cat expressions, phone layouts
 manifest.webmanifest  home-screen app info
+sw.js                 service worker: network first (fresh files after a deploy), offline fallback
+js/version.js         build label shown in Settings; bump per deploy
+scripts/serve.mjs     local dev server (npm run serve)
+tests/                unit.test.mjs (Node) and smoke.test.mjs (headless Chrome)
 icons/                app icons (icon.svg is the source design)
 js/main.js            entry point: tabs, sets up both modes and settings
 js/tuner.js           tuner mode: mic -> pitch tracker -> gauge + readout
@@ -76,5 +101,6 @@ js/settings-panel.js  the settings sheet UI
 js/wake-lock.js       keeps the screen on while tuning
 ```
 
-- `yin.js`, `notes.js` and `pitch-tracker.js` have no DOM dependencies and can be imported straight into Node (`package.json` only sets `"type": "module"`).
-- Keep it dependency-free until there is a reason not to.
+- `yin.js`, `notes.js`, `pitch-tracker.js` and `metronome.js`'s `tempoName` have no DOM dependencies, so the unit tests import them straight into Node.
+- The app itself stays dependency-free; `puppeteer-core` is only for the tests.
+- Why the service worker: GitHub Pages lets browsers reuse files for 10 minutes, so right after a deploy a phone could load new HTML with old CSS/JS (unstyled, dead buttons). `sw.js` always asks the server first.

@@ -23,7 +23,7 @@ export function createPitchTracker({
   maxHz = 2200,
 }) {
   let hist = [];
-  let lastPitchAt = 0;
+  let lastPitchAt = null; // time of the last detection, null when no note is held
 
   return {
     /** Feed one buffer; returns its RMS level. */
@@ -35,15 +35,15 @@ export function createPitchTracker({
         if (hist.length > historySize) hist.shift();
         lastPitchAt = ts;
         onPitch(median(hist));
-      } else if (lastPitchAt && ts - lastPitchAt > holdMs) {
+      } else if (lastPitchAt !== null && ts - lastPitchAt > holdMs) {
         hist = [];
-        lastPitchAt = 0;
+        lastPitchAt = null;
         onLost();
       }
       return level;
     },
     /** The current smoothed frequency, or null if no note is held. */
     get current() { return hist.length ? median(hist) : null; },
-    reset() { hist = []; lastPitchAt = 0; },
+    reset() { hist = []; lastPitchAt = null; },
   };
 }

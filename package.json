@@ -1,4 +1,13 @@
 {
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "serve": "node scripts/serve.mjs",
+    "test:unit": "node tests/unit.test.mjs",
+    "test:browser": "node tests/smoke.test.mjs",
+    "test": "npm run test:unit && npm run test:browser"
+  },
+  "devDependencies": {
+    "puppeteer-core": "21.11.0"
+  }
 }
