@@ -1,6 +1,6 @@
 /* Pushes the current theme into CSS custom properties. Derived colors are
    mixed here rather than with CSS color-mix(), which older iOS lacks. */
-import { COLOR_KEYS, currentTheme } from './settings.js';
+import { COLOR_KEYS, currentTheme, settings } from './settings.js';
 
 function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
 /** a weighted by t, b by 1 - t */
@@ -19,6 +19,7 @@ export function applyTheme() {
   root.style.setProperty('--accent-deep', mix(c.accent, '#000000', 0.75));
   root.style.setProperty('--glow', c.good + '8c'); // ~55% alpha
   root.dataset.deco = c.deco;
+  root.dataset.style = settings.kawaii ? 'kawaii' : 'classic'; // CSS hangs the cats, patterns etc. off this
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute('content', c.bg);
 }

@@ -50,5 +50,6 @@ export function showPitch(freq, note, names) {
   $('targetVal').textContent = 'target ' + note.target.toFixed(1) + ' Hz';
   $('accFlat').classList.toggle('on', !inTune && c < 0);
   $('accSharp').classList.toggle('on', !inTune && c > 0);
-  setStatus(inTune ? 'Purrfect! In tune' : c < 0 ? 'Flat — tune up' : 'Sharp — tune down');
+  const kawaii = document.documentElement.dataset.style !== 'classic';
+  setStatus(inTune ? (kawaii ? 'Purrfect! In tune' : 'In tune') : c < 0 ? 'Flat — tune up' : 'Sharp — tune down');
 }

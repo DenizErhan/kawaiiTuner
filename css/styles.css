@@ -14,6 +14,7 @@
   --accent-deep: #c76f9c;
   --glow: #7cf5c48c;
   --deco: none;
+  --font: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", Nunito, Quicksand, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Background patterns, used as a mask so they take the theme's accent color. */
@@ -31,7 +32,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN", "Arial Rounded MT Bold", Nunito, Quicksand, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font);
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   -webkit-touch-callout: none;
@@ -180,7 +181,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .beat-dots i.accent.on { background: var(--good); }
 
 /* the cat takes whatever height the controls leave free */
-.maneki { display: block; flex: 1 1 0; width: 100%; min-height: 150px; max-height: 440px; margin: 6px auto 0; overflow: visible; }
+.figure { display: block; flex: 1 1 0; width: 100%; min-height: 150px; max-height: 440px; margin: 6px auto 0; overflow: visible; }
 .view-metro .spacer { flex: none; }
 .mk-fur { fill: var(--cat); stroke: var(--cat); stroke-width: 3; stroke-linejoin: round; transition: fill .3s, stroke .3s; }
 .mk-arm { stroke: var(--cat); stroke-width: 26; stroke-linecap: round; transition: stroke .3s; }
@@ -264,6 +265,15 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
 .seg-3 { grid-template-columns: repeat(3, 1fr); }
 .seg button { height: 46px; border: 0; background: var(--surface); font-weight: 700; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 14px; padding: 12px 14px; border: 2px solid var(--line); border-radius: 18px; }
+.switch-text { display: flex; flex-direction: column; gap: 2px; }
+.switch-text strong { font-size: 16px; }
+.switch-text small { font-size: 13px; color: var(--muted); }
+.switch { position: relative; flex: none; width: 56px; height: 32px; border: 0; border-radius: 16px; background: var(--line); transition: background .2s; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: var(--text); transition: transform .2s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"] i { transform: translateX(24px); background: var(--bg); }
+
 .version { margin: 14px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
 .ghost { margin-top: 26px; width: 100%; height: 48px; background: transparent; border: 2px solid var(--line); border-radius: 16px; color: var(--muted); font-weight: 600; }
 
@@ -314,7 +324,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
     grid-template-rows: auto auto auto auto 1fr auto;
     grid-template-areas: "cat dots" "cat tempo" "cat slider" "cat row" "cat spacer" "cat go";
   }
-  .maneki { grid-area: cat; height: calc(100vh - 90px); max-height: none; align-self: center; }
+  .figure { grid-area: cat; height: calc(100vh - 90px); max-height: none; align-self: center; }
   .beat-dots { grid-area: dots; }
   .tempo { grid-area: tempo; }
   .bpm output { font-size: 52px; }
@@ -324,5 +334,78 @@ button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); ou
   .view-metro .spacer { grid-area: spacer; }
   .view-metro .go { grid-area: go; height: 54px; }
 }
+
+/* ---------- style: kawaii (default) vs classic ----------
+   The JS builds both versions of each figure; these rules show one. */
+.gauge .hub { display: none; fill: var(--accent); transition: fill .2s; }
+.app.intune .gauge .hub { fill: var(--good); }
+.pendulum { display: none; }
+
+:root[data-style="classic"] {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+:root[data-style="classic"] body::before,
+:root[data-style="classic"] .kawaii-only,
+:root[data-style="classic"] .colors label[data-key="cat"],
+:root[data-style="classic"] .gauge .cat,
+:root[data-style="classic"] .gauge .needle-tip,
+:root[data-style="classic"] .paw,
+:root[data-style="classic"] .name-wrap::before,
+:root[data-style="classic"] .name-wrap::after,
+:root[data-style="classic"] .maneki { display: none; }
+:root[data-style="classic"] .gauge .hub,
+:root[data-style="classic"] .pendulum { display: block; }
+:root[data-style="classic"] .app.intune .name { animation: none; }
+
+/* flatter, quieter shapes */
+:root[data-style="classic"] .card,
+:root[data-style="classic"] .icon-btn,
+:root[data-style="classic"] .tabs,
+:root[data-style="classic"] .chip,
+:root[data-style="classic"] .seg,
+:root[data-style="classic"] .colors label,
+:root[data-style="classic"] .stepper button,
+:root[data-style="classic"] .mini-stepper,
+:root[data-style="classic"] .tap,
+:root[data-style="classic"] .round-btn,
+:root[data-style="classic"] .switch-row,
+:root[data-style="classic"] .ghost,
+:root[data-style="classic"] .sheet { border-width: 1px; }
+:root[data-style="classic"] .card { border-radius: 16px; box-shadow: none; }
+:root[data-style="classic"] .icon-btn { border-radius: 12px; }
+:root[data-style="classic"] .tabs { border-radius: 12px; }
+:root[data-style="classic"] .tabs button { border-radius: 9px; font-weight: 700; }
+:root[data-style="classic"] .acc { border: 0; letter-spacing: .16em; }
+:root[data-style="classic"] .chip,
+:root[data-style="classic"] .colors label,
+:root[data-style="classic"] .stepper button,
+:root[data-style="classic"] .seg,
+:root[data-style="classic"] .ghost,
+:root[data-style="classic"] .switch-row,
+:root[data-style="classic"] .mini-stepper,
+:root[data-style="classic"] .tap { border-radius: 12px; }
+:root[data-style="classic"] .tap,
+:root[data-style="classic"] .round-btn { box-shadow: none; }
+:root[data-style="classic"] .tap:active,
+:root[data-style="classic"] .round-btn:active { transform: none; background: var(--surface2); box-shadow: none; }
+:root[data-style="classic"] .go,
+:root[data-style="classic"] .app[data-run="on"] .view-tuner .go,
+:root[data-style="classic"] .view-metro[data-run="on"] .go { border-radius: 16px; box-shadow: none; }
+:root[data-style="classic"] .go:active { transform: scale(.98); box-shadow: none; }
+:root[data-style="classic"] .sheet { border-radius: 20px 20px 0 0; }
+:root[data-style="classic"] .gauge .arc { stroke-width: 3; }
+:root[data-style="classic"] .gauge .zone { stroke-width: 12; stroke-linecap: butt; }
+:root[data-style="classic"] .gauge .tick { stroke-width: 1.5; }
+:root[data-style="classic"] .gauge .needle-line { stroke-width: 3.5; }
+
+/* classic pendulum metronome */
+.pd-case { fill: var(--surface); stroke: var(--line); stroke-width: 3; stroke-linejoin: round; }
+.pd-face { fill: var(--bg); opacity: .55; }
+.pd-tick { stroke: var(--muted); stroke-width: 1.5; stroke-linecap: round; opacity: .6; }
+.pd-base { fill: var(--line); }
+.pd-arm { stroke: var(--text); stroke-width: 4; stroke-linecap: round; }
+.pd-weight { fill: var(--accent); transition: d .2s; }
+.pd-pivot { fill: var(--text); }
+.pd-lamp { fill: var(--good); opacity: .25; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }

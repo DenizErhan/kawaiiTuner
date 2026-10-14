@@ -219,6 +219,49 @@ try {
     expect(await page.$eval('#sheet', (e) => !e.classList.contains('open')), 'sheet did not close');
   });
 
+  console.log('classic style');
+  const visible = (sel) => page.$eval(sel, (e) => getComputedStyle(e).display !== 'none');
+  await test('Kawaii-fy switch turns classic style on', async () => {
+    await tap('#btnSettings'); await sleep(450);
+    expect((await page.$eval('#kawaiiSwitch', (e) => e.getAttribute('aria-checked'))) === 'true', 'kawaii should be on by default');
+    await tap('#kawaiiSwitch');
+    expect(await page.evaluate(() => document.documentElement.dataset.style) === 'classic', 'style not classic');
+    expect((await page.$eval('#kawaiiSwitch', (e) => e.getAttribute('aria-checked'))) === 'false', 'switch still on');
+    expect(!(await visible('.kawaii-only')), 'pattern picker still shown');
+    expect((await text('#chips .chip:nth-child(1) span:last-child')) === 'Midnight', 'theme names not classic');
+    await shot('classic-settings');
+    await tap('#btnClose'); await sleep(450);
+  });
+  await test('classic metronome shows a swinging pendulum, no cat', async () => {
+    expect(!(await visible('#maneki')) && await visible('#pendulum'), 'wrong figure shown');
+    await tap('#btnMetro'); await sleep(900);
+    const swings = new Set();
+    for (let i = 0; i < 5; i++) { swings.add(await page.$eval('#pendulum g', (g) => g.getAttribute('transform'))); await sleep(80); }
+    await shot('classic-metronome');
+    await tap('#btnMetro');
+    expect(swings.size > 3, 'pendulum is not swinging');
+    await noOverflow(); await inView('#btnMetro');
+  });
+  await test('classic tuner: plain hub, no cat, no pattern', async () => {
+    await tap('#tabTuner'); await sleep(200);
+    expect(!(await visible('#gauge .cat')) && await visible('#gauge .hub'), 'cat/hub wrong');
+    expect((await page.evaluate(() => getComputedStyle(document.body, '::before').display)) === 'none', 'pattern still shown');
+    await tap('#btnGo');
+    await page.waitForFunction(() => /^\d/.test(document.getElementById('hzVal').textContent), { timeout: 6000 });
+    await shot('classic-tuner');
+    await tap('#btnGo');
+    await noOverflow(); await inView('#btnGo');
+  });
+  await test('classic style is remembered, and switches back', async () => {
+    await page.reload({ waitUntil: 'networkidle0' });
+    expect(await page.evaluate(() => document.documentElement.dataset.style) === 'classic', 'not remembered');
+    await tap('#btnSettings'); await sleep(450);
+    await tap('#kawaiiSwitch');
+    expect(await page.evaluate(() => document.documentElement.dataset.style) === 'kawaii', 'did not switch back');
+    expect((await text('#chips .chip:nth-child(1) span:last-child')) === 'Midnight Neko', 'kawaii names not back');
+    await tap('#btnClose'); await sleep(450);
+  });
+
   console.log('layouts');
   for (const name of ['small', 'tiny', 'landscape']) {
     await test(`${name} (${PHONES[name].width}x${PHONES[name].height}) fits, both tabs`, async () => {

@@ -1,7 +1,9 @@
-/* The metronome mode: tempo controls, beat dots, tap tempo and the lucky cat. */
+/* The metronome mode: tempo controls, beat dots, tap tempo, and the figure that
+   keeps the beat (lucky cat in kawaii style, pendulum in classic; CSS shows one). */
 import { settings, setBpm, setBeats, BPM_MIN, BPM_MAX, BPM_DEFAULT, BEATS_MIN, BEATS_MAX } from './settings.js';
 import { createMetronome, tempoName } from './metronome.js';
 import { createManeki } from './maneki.js';
+import { createPendulum } from './pendulum.js';
 import { requestWakeLock, releaseWakeLock } from './wake-lock.js';
 import { holdToRepeat, onDoubleTap } from './ui.js';
 
@@ -10,13 +12,14 @@ const TAP_RESET_MS = 2000; // a pause this long starts a new tap-tempo measureme
 
 export function createMetronomePanel() {
   const view = $('viewMetro');
-  const cat = createManeki($('maneki'));
+  const figures = [createManeki($('maneki')), createPendulum($('pendulum'), { minBpm: BPM_MIN, maxBpm: BPM_MAX })];
+  const pose = (pos) => figures.forEach((f) => f.setPose(pos, settings.bpm));
   const metro = createMetronome({ bpm: settings.bpm, beats: settings.beats, onBeat });
   let raf = 0;
 
   function onBeat(beat) {
     $('beatDots').querySelectorAll('i').forEach((d, i) => d.classList.toggle('on', i === beat));
-    if (beat === 0 && settings.beats > 1) cat.accent();
+    if (beat === 0 && settings.beats > 1) figures.forEach((f) => f.accent());
   }
 
   function buildDots() {
@@ -36,7 +39,7 @@ export function createMetronomePanel() {
     $('beatsVal').textContent = settings.beats;
   }
 
-  function changeBpm(v) { setBpm(v); metro.setBpm(settings.bpm); sync(); }
+  function changeBpm(v) { setBpm(v); metro.setBpm(settings.bpm); sync(); if (!metro.running) pose(null); } // moves the pendulum weight
   function changeBeats(v) {
     if (v === settings.beats || v < BEATS_MIN || v > BEATS_MAX) return;
     setBeats(v); metro.setBeats(settings.beats); buildDots(); sync();
@@ -44,7 +47,7 @@ export function createMetronomePanel() {
 
   function loop() {
     raf = requestAnimationFrame(loop);
-    cat.setPose(metro.frame());
+    pose(metro.frame());
   }
 
   function start() {
@@ -63,7 +66,7 @@ export function createMetronomePanel() {
     $('btnMetroLabel').textContent = 'Start';
     $('beatDots').querySelectorAll('i').forEach((d) => d.classList.remove('on'));
     releaseWakeLock();
-    cat.setPose(null);
+    pose(null);
   }
 
   // tap tempo: average the gaps between the last few taps
@@ -97,7 +100,7 @@ export function createMetronomePanel() {
 
   buildDots();
   sync();
-  cat.setPose(null);
+  pose(null);
 
   return { stop, get running() { return metro.running; } };
 }

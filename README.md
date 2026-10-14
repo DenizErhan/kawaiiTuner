@@ -37,7 +37,8 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 - Pitch detection with the YIN algorithm (`js/yin.js`), about 30 Hz to 2 kHz.
 - Note name, octave, cents sharp/flat, frequency, target frequency.
 - Needle gauge with a cat on the pivot: asleep when stopped, eyes follow the needle, hops and blushes when you're in tune (within about 5 cents).
-- Kawaii themes: Midnight Neko, Strawberry Milk, Matcha Mochi, Sakura Night, Boba Tea, Sea Kitty, plus a Custom theme (edit any color, the kitty included, and pick a background pattern: paws, hearts, stars, petals, bubbles, fish).
+- Two styles, switched with **Kawaii-fy ✨** at the top of Settings (on by default). Classic: plain font, no patterns, plain needle, and a pendulum metronome whose weight slides with the tempo. Kawaii: everything below.
+- Six color themes that work in both styles (classic / kawaii names): Midnight / Midnight Neko, Rose / Strawberry Milk, Sage / Matcha Mochi, Plum / Sakura Night, Sand / Boba Tea, Ocean / Sea Kitty, plus a Custom theme (edit any color, the kitty included, and pick a background pattern: paws, hearts, stars, petals, bubbles, fish).
 - Made for phones: portrait and landscape layouts, safe areas (notch), no double-tap zoom, swipe the settings sheet down to close, hold +/- to step quickly, screen stays on while tuning, add to home screen (web manifest + icons).
 - Reference pitch A4 (400-480 Hz; double-tap the value to reset to 440).
 - Note names: C D E or Do Re Mi.
@@ -87,7 +88,8 @@ js/main.js            entry point: tabs, sets up both modes and settings
 js/tuner.js           tuner mode: mic -> pitch tracker -> gauge + readout
 js/metronome.js       metronome engine: look-ahead click scheduling (pure Web Audio)
 js/metronome-panel.js metronome mode UI: tempo, beats, tap tempo
-js/maneki.js          the lucky cat SVG and its beat-synced pose
+js/maneki.js          the lucky cat SVG and its beat-synced pose (kawaii style)
+js/pendulum.js        classic pendulum metronome figure
 js/ui.js              shared touch helpers (hold-to-repeat, double-tap)
 js/yin.js             YIN pitch detector (pure function)
 js/notes.js           frequency -> note, octave, cents (pure)

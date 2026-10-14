@@ -1,8 +1,8 @@
 /* The settings sheet: theme chips, pattern, color pickers, A4 stepper, note names, reset.
    onChange() is called after any change that affects the pitch readout. */
 import {
-  THEMES, COLOR_KEYS, DECOS, A4_DEFAULT, settings, currentTheme,
-  setTheme, setCustomColor, setDeco, setA4, setNotation, reset,
+  THEMES, COLOR_KEYS, DECOS, A4_DEFAULT, settings, currentTheme, themeLabel,
+  setTheme, setCustomColor, setDeco, setA4, setNotation, setKawaii, reset,
 } from './settings.js';
 import { applyTheme } from './theme.js';
 import { holdToRepeat, onDoubleTap } from './ui.js';
@@ -12,8 +12,8 @@ const $ = (id) => document.getElementById(id);
 function buildChips() {
   const wrap = $('chips');
   wrap.textContent = '';
-  const entries = Object.keys(THEMES).map((id) => [id, THEMES[id].label, THEMES[id]]);
-  entries.push(['custom', 'Custom', settings.custom]);
+  const entries = Object.keys(THEMES).map((id) => [id, themeLabel(id), THEMES[id]]);
+  entries.push(['custom', themeLabel('custom'), settings.custom]);
   entries.forEach(([id, label, c]) => {
     const b = document.createElement('button');
     b.className = 'chip';
@@ -44,6 +44,7 @@ function buildColorInputs() {
   const wrap = $('colors');
   COLOR_KEYS.forEach(([k, label]) => {
     const l = document.createElement('label');
+    l.dataset.key = k;
     const s = document.createElement('span');
     s.textContent = label;
     const inp = document.createElement('input');
@@ -59,6 +60,7 @@ function buildColorInputs() {
 function refreshTheme() {
   applyTheme();
   buildChips();
+  $('kawaiiSwitch').setAttribute('aria-checked', String(settings.kawaii));
   const c = currentTheme();
   COLOR_KEYS.forEach(([k]) => { const inp = $('c-' + k); if (inp) inp.value = c[k]; });
   document.querySelectorAll('#decos button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === c.deco)));
@@ -124,6 +126,7 @@ export function initSettingsPanel({ onChange }) {
     changed();
   }));
 
+  $('kawaiiSwitch').addEventListener('click', () => { setKawaii(!settings.kawaii); refreshTheme(); changed(); });
   $('btnReset').addEventListener('click', () => { reset(); refreshTheme(); changed(); });
 
   buildDecos();

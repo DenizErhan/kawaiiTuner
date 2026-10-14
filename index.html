@@ -60,7 +60,8 @@
 
   <section class="view view-metro" id="viewMetro" role="tabpanel" aria-labelledby="tabMetro" data-run="off" hidden>
     <div class="beat-dots" id="beatDots" aria-hidden="true"></div>
-    <svg class="maneki" id="maneki" viewBox="0 0 240 250" role="img" aria-label="Lucky cat keeping the beat"></svg>
+    <svg class="figure maneki" id="maneki" viewBox="0 0 240 250" role="img" aria-label="Lucky cat keeping the beat"></svg>
+    <svg class="figure pendulum" id="pendulum" viewBox="0 0 240 250" role="img" aria-label="Metronome pendulum keeping the beat"></svg>
 
     <div class="tempo">
       <button class="round-btn" id="bpmMinus" aria-label="Slower">&minus;</button>
@@ -105,11 +106,18 @@
     </div>
   </div>
 
+  <div class="switch-row">
+    <span class="switch-text" id="kawaiiLabel"><strong>Kawaii-fy ✨</strong><small>cats, patterns and sparkles</small></span>
+    <button class="switch" id="kawaiiSwitch" role="switch" aria-checked="true" aria-labelledby="kawaiiLabel"><i></i></button>
+  </div>
+
   <h3>Theme</h3>
   <div class="chips" id="chips"></div>
 
-  <h3>Pattern</h3>
-  <div class="seg seg-3" id="decos"></div>
+  <div class="kawaii-only">
+    <h3>Pattern</h3>
+    <div class="seg seg-3" id="decos"></div>
+  </div>
 
   <h3>Colors <small>change any color to make your own theme</small></h3>
   <div class="colors" id="colors"></div>

@@ -1,4 +1,5 @@
-/* SVG needle gauge, -50..+50 cents, with a cat sitting on the pivot.
+/* SVG needle gauge, -50..+50 cents, with a cat sitting on the pivot (kawaii style)
+   or a plain hub (classic style; CSS shows one or the other).
    Owns its own needle animation: call setCents() and the needle glides there.
    The cat's expression is driven by CSS from the .app state (sleeping, awake, in tune). */
 
@@ -74,9 +75,10 @@ export function createGauge(svg, { zoneCents = 5 } = {}) {
     t.textContent = c > 0 ? '+' + c : String(c);
   });
   const needle = svgEl('g', { id: 'needle' }, svg);
-  svgEl('line', { class: 'needle-line', x1: CX, y1: CY - 20, x2: CX, y2: CY - 112 }, needle);
+  svgEl('line', { class: 'needle-line', x1: CX, y1: CY, x2: CX, y2: CY - 112 }, needle);
   svgEl('path', { class: 'needle-tip', d: HEART, transform: 'translate(' + CX + ' ' + (CY - 115) + ') scale(1.5)' }, needle);
-  const pupils = buildCat(svgEl('g', { transform: 'translate(' + CX + ' ' + CY + ')' }, svg));
+  svgEl('circle', { class: 'hub', cx: CX, cy: CY, r: 9 }, needle); // classic style; the cat covers it in kawaii
+  const pupils = buildCat(svgEl('g', { class: 'cat', transform: 'translate(' + CX + ' ' + CY + ')' }, svg));
 
   let deg = 0, target = 0, raf = 0, lastFrame = 0;
   function draw() {
