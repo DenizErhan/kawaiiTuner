@@ -1,6 +1,6 @@
 # Tuner
 
-A tuner for musicians that runs in the browser. Plain HTML/JS, no build step, no dependencies.
+A cute tuner and metronome for musicians that runs in the browser. Plain HTML/JS, no build step, no dependencies.
 
 ## Run it
 
@@ -20,7 +20,9 @@ Allow the microphone, press Start, play or sing a note.
 - Made for phones: portrait and landscape layouts, safe areas (notch), no double-tap zoom, swipe the settings sheet down to close, hold +/- to step quickly, screen stays on while tuning, add to home screen (web manifest + icons).
 - Reference pitch A4 (400-480 Hz; double-tap the value to reset to 440).
 - Note names: C D E or Do Re Mi.
-- Settings saved in the browser (localStorage).
+- Metronome (second tab): 30-250 BPM with tempo names, slider and hold-to-repeat +/-, 1-12 beats per bar with an accented first beat, tap tempo. Clicks are scheduled on the Web Audio clock, so timing stays exact. A Maneki Neko beckons on every beat, sways, and jingles its bell on beat 1.
+- Only one mode runs at a time, so the tuner never hears the clicks.
+- Settings saved in the browser (localStorage), including the open tab and the tempo.
 
 ## Try it on your phone
 
@@ -36,13 +38,15 @@ On the phone: open the link, tap Start, allow the microphone. To get an app icon
 
 - Very low bass notes (below about 55 Hz) with background noise can wobble by 4-7 cents.
 - Tested on synthetic tones and a simulated microphone only; needs checking with a real guitar and voice.
+- iPhone: the metronome plays through the silent switch on iOS 17+; on older iOS, flip the switch off to hear it.
+- The metronome stops when the phone locks or you leave the browser (the screen stays on while it runs).
 
 ## Roadmap
 
 1. Host on HTTPS (GitHub Pages or Cloudflare Pages) so it works on a phone.
 2. PWA: offline support (service worker). Manifest and icons are done.
 3. Vocalist mode: scrolling real-time pitch line while singing.
-4. Band tools: members, setlists, metronome.
+4. Band tools: members, setlists, per-song tempos for the metronome.
 5. Later: wrap for the app stores if it takes off (Google Play about $25 one-time, Apple about $99/year).
 
 ## Notes for working on it with Claude
@@ -54,7 +58,12 @@ index.html            markup only
 css/styles.css        all styles, background patterns, cat expressions, phone layouts
 manifest.webmanifest  home-screen app info
 icons/                app icons (icon.svg is the source design)
-js/main.js            entry point: wires everything together, start/stop loop
+js/main.js            entry point: tabs, sets up both modes and settings
+js/tuner.js           tuner mode: mic -> pitch tracker -> gauge + readout
+js/metronome.js       metronome engine: look-ahead click scheduling (pure Web Audio)
+js/metronome-panel.js metronome mode UI: tempo, beats, tap tempo
+js/maneki.js          the lucky cat SVG and its beat-synced pose
+js/ui.js              shared touch helpers (hold-to-repeat, double-tap)
 js/yin.js             YIN pitch detector (pure function)
 js/notes.js           frequency -> note, octave, cents (pure)
 js/pitch-tracker.js   noise gate + YIN + median smoothing + hold

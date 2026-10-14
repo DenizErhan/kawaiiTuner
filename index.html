@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#141128">
 <meta name="color-scheme" content="dark light">
-<meta name="description" content="A cute tuner for musicians that runs in the browser.">
+<meta name="description" content="A cute tuner and metronome for musicians that runs in the browser.">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -18,16 +18,21 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-<main class="app" id="app" data-run="off" data-pitch="none">
+<main class="app" id="app" data-run="off" data-pitch="none" data-mode="tuner">
   <header class="top">
-    <h1>Tuner</h1>
-    <div class="level" aria-hidden="true"><i id="level"></i></div>
+    <div class="tabs" role="tablist" aria-label="Mode">
+      <button role="tab" id="tabTuner" aria-controls="viewTuner" aria-selected="true">Tuner</button>
+      <button role="tab" id="tabMetro" aria-controls="viewMetro" aria-selected="false" tabindex="-1">Metronome</button>
+    </div>
     <button class="icon-btn" id="btnSettings" aria-label="Settings" aria-expanded="false" aria-controls="sheet">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
         <path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/>
       </svg>
     </button>
   </header>
+
+  <section class="view view-tuner" id="viewTuner" role="tabpanel" aria-labelledby="tabTuner">
+  <div class="level" aria-hidden="true"><i id="level"></i></div>
 
   <section class="note">
     <span class="acc" id="accFlat">FLAT</span>
@@ -51,6 +56,41 @@
     </svg>
     <span id="btnGoLabel">Start</span>
   </button>
+  </section>
+
+  <section class="view view-metro" id="viewMetro" role="tabpanel" aria-labelledby="tabMetro" data-run="off" hidden>
+    <div class="beat-dots" id="beatDots" aria-hidden="true"></div>
+    <svg class="maneki" id="maneki" viewBox="0 0 240 250" role="img" aria-label="Lucky cat keeping the beat"></svg>
+
+    <div class="tempo">
+      <button class="round-btn" id="bpmMinus" aria-label="Slower">&minus;</button>
+      <div class="bpm">
+        <output id="bpmVal" aria-live="polite">100</output>
+        <span class="bpm-unit">BPM · <span id="tempoName">Andante</span></span>
+      </div>
+      <button class="round-btn" id="bpmPlus" aria-label="Faster">+</button>
+    </div>
+    <input type="range" class="slider" id="bpmSlider" min="30" max="250" step="1" aria-label="Tempo in beats per minute">
+
+    <div class="metro-row">
+      <div class="mini-stepper">
+        <span class="lbl">Beats</span>
+        <button id="beatsMinus" aria-label="Fewer beats per bar">&minus;</button>
+        <output id="beatsVal">4</output>
+        <button id="beatsPlus" aria-label="More beats per bar">+</button>
+      </div>
+      <button class="tap" id="btnTap">Tap<span class="tap-long"> tempo</span></button>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="go" id="btnMetro">
+    <svg class="paw" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <ellipse cx="6" cy="10" rx="2.2" ry="2.8"/><ellipse cx="10" cy="6" rx="2.2" ry="2.8"/><ellipse cx="14" cy="6" rx="2.2" ry="2.8"/><ellipse cx="18" cy="10" rx="2.2" ry="2.8"/>
+      <path d="M12 11c-3.3 0-6 3.2-6 5.6 0 1.8 1.4 2.6 2.9 2.2 1.1-.3 2-.8 3.1-.8s2 .5 3.1.8c1.5.4 2.9-.4 2.9-2.2 0-2.4-2.7-5.6-6-5.6z"/>
+    </svg>
+    <span id="btnMetroLabel">Start</span>
+  </button>
+  </section>
 </main>
 
 <div class="backdrop" id="backdrop"></div>
