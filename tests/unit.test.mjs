@@ -5,6 +5,10 @@ import { noteFromFreq, NOTE_NAMES } from '../js/notes.js';
 import { createPitchTracker, median, rms } from '../js/pitch-tracker.js';
 import { tempoName } from '../js/metronome.js';
 import { makeCode, normalizeCode, cleanSong, songMeta, moveItem, LIMITS } from '../js/band.js';
+import {
+  PLAN_LIMITS, dayKey, fromKey, addDays, dayLabel, weekLabel, toMin, fmtMin, inputMin, pairs, cleanRanges,
+  overlaps, best, suggest, cleanPoll, tally, toggleVote, leader,
+} from '../js/plan.js';
 import { readFileSync } from 'node:fs';
 import { webcrypto } from 'node:crypto';
 
@@ -138,6 +142,84 @@ test('band code rule in firestore.rules matches the codes we make', () => {
   for (const [field, max] of [['title', LIMITS.title], ['artist', LIMITS.artist], ['key', LIMITS.key], ['notes', LIMITS.notes]]) {
     assert.ok(rules.includes(`text(d.${field}, ${field === 'title' ? 1 : 0}, ${max})`), field + ' limit differs from the rules');
   }
+});
+
+console.log('plan');
+const h = (t) => toMin(t, true); // end times
+test('day keys round-trip, across month ends', () => {
+  assert.equal(dayKey(new Date(2026, 9, 5)), '2026-10-05');
+  assert.equal(dayKey(fromKey('2026-10-18')), '2026-10-18');
+  assert.equal(dayKey(addDays(fromKey('2026-10-29'), 7)), '2026-11-05');
+});
+test('day and week labels', () => {
+  assert.equal(dayLabel('2026-10-17'), 'Sat 17 Oct');
+  assert.equal(weekLabel(fromKey('2026-10-12')), '12–18 Oct');
+  assert.equal(weekLabel(fromKey('2026-10-29')), '29 Oct – 4 Nov');
+});
+test('times: parsing, midnight as an end, formatting', () => {
+  assert.equal(toMin('18:30'), 1110);
+  assert.equal(toMin('00:00'), 0);
+  assert.equal(h('00:00'), 1440);
+  assert.equal(toMin(''), null);
+  assert.equal(toMin('25:00'), null);
+  assert.equal(fmtMin(1440), '24:00');
+  assert.equal(inputMin(1440), '00:00');
+});
+test('ranges are sorted, merged, and bad ones dropped', () => {
+  assert.deepEqual(cleanRanges([[1200, 1320], [600, 720], [700, 800], [900, 900], [1000, 950]]), [600, 800, 1200, 1320]);
+  assert.deepEqual(pairs([1, 2, 3, 4]), [[1, 2], [3, 4]]);
+  const many = Array.from({ length: 20 }, (_, i) => [i * 60, i * 60 + 30]);
+  assert.equal(cleanRanges(many).length, PLAN_LIMITS.ranges * 2, 'capped to what the rules allow');
+});
+const deniz = { uid: 'd', times: [840, 1320] }; // 14:00–22:00
+const ali = { uid: 'a', times: [1110, 1260] }; // 18:30–21:00
+const ece = { uid: 'e', times: [600, 720, 1200, 1440] }; // 10–12, 20:00–24:00
+test('overlaps: who is free when', () => {
+  assert.deepEqual(overlaps([deniz, ali]), [
+    { start: 840, end: 1110, uids: ['d'] },
+    { start: 1110, end: 1260, uids: ['d', 'a'] },
+    { start: 1260, end: 1320, uids: ['d'] },
+  ]);
+  assert.deepEqual(overlaps([]), []);
+});
+test('best: most people first, then the longest stretch', () => {
+  assert.deepEqual(best([deniz, ali, ece]), { start: 1200, end: 1260, uids: ['d', 'a', 'e'] });
+  assert.deepEqual(best([deniz, ali]), { start: 1110, end: 1260, uids: ['d', 'a'] });
+  assert.equal(best([{ uid: 'x', times: [600, 620] }]), null, 'under 30 minutes does not count');
+});
+test('day-poll suggestions: days where enough people overlap, by date', () => {
+  const days = [
+    { key: '2026-10-19', entries: [deniz, ali, ece] },
+    { key: '2026-10-17', entries: [deniz, ali] },
+    { key: '2026-10-18', entries: [deniz] },
+  ];
+  assert.deepEqual(suggest(days, 2), ['Sat 17 Oct · 18:30–21:00', 'Mon 19 Oct · 20:00–21:00']);
+  assert.equal(suggest(days, 1).length, 3);
+});
+test('polls are cleaned: question, 2+ different options', () => {
+  assert.deepEqual(cleanPoll({ question: '  Next  cover? ', options: ['Creep', ' creep ', '', 'Wonderwall'], multi: 1 }),
+    { question: 'Next cover?', options: ['Creep', 'Wonderwall'], multi: true });
+  assert.equal(cleanPoll({ question: 'x', options: ['a', 'A'] }), null);
+  assert.equal(cleanPoll({ question: '', options: ['a', 'b'] }), null);
+  assert.equal(cleanPoll({ question: 'x', options: Array.from({ length: 15 }, (_, i) => 'o' + i) }).options.length, PLAN_LIMITS.options);
+});
+test('votes: tally counts members only; toggling picks', () => {
+  const poll = { options: ['a', 'b', 'c'], votes: { d: [0, 2], a: [2], gone: [1], e: [] } };
+  const t = tally(poll, ['d', 'a', 'e']);
+  assert.deepEqual(t.map((x) => x.count), [1, 0, 2]);
+  assert.deepEqual(t[2].uids, ['d', 'a']);
+  assert.equal(leader(t), 2);
+  assert.equal(leader(tally({ options: ['a', 'b'], votes: {} }, [])), 0, 'no votes: the first one');
+  assert.deepEqual(toggleVote([2], 0, true), [0, 2]);
+  assert.deepEqual(toggleVote([2], 0, false), [0]);
+  assert.deepEqual(toggleVote([0, 2], 2, true), [0]);
+});
+test('plan limits match firestore.rules', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+  assert.ok(rules.includes(`text(d.question, 1, ${PLAN_LIMITS.question})`), 'question limit');
+  assert.ok(rules.includes(`d.options.size() <= ${PLAN_LIMITS.options}`), 'option count');
+  assert.ok(rules.includes(`times.size() <= ${PLAN_LIMITS.ranges * 2}`), 'range count');
+  assert.ok(rules.includes(`text(request.resource.data.name, 1, ${LIMITS.band})`), 'band name');
 });
 
 if (failed) { console.log(`\n${failed} unit test(s) failed`); process.exit(1); }

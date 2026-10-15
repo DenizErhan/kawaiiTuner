@@ -1,42 +1,15 @@
 /* The Band tab: start or join a band with a code, the shared song pool, and
    setlists. Tapping a song loads its tempo and beats into the metronome; a
-   setlist also shows a bar there to step through its songs.
+   setlist also shows a bar there to step through its songs. The Plan pane
+   (polls, free time) lives in plan-panel.js.
    All Firebase work goes through band-store.js. */
 import { settings, setMe, setBand } from './settings.js';
 import { LIMITS, normalizeCode, cleanText, cleanSong, songMeta, moveItem, byName } from './band.js';
 import { connect, friendlyError } from './band-store.js';
+import { $, el, iconBtn, empty } from './dom.js';
+import { createPlanPanel } from './plan-panel.js';
 
-const $ = (id) => document.getElementById(id);
-const ME = 'me'; // openNameDialog target for your own name (setlist ids are 20 chars)
-const ICONS = {
-  edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4',
-  up: 'M6 15l6-6 6 6',
-  down: 'M6 9l6 6 6-6',
-  remove: 'M6 6l12 12M18 6L6 18',
-};
-function icon(name) {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', '18'); svg.setAttribute('height', '18');
-  svg.setAttribute('aria-hidden', 'true');
-  const p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  p.setAttribute('d', ICONS[name]);
-  svg.appendChild(p);
-  return svg;
-}
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
-}
-function iconBtn(name, label, data) {
-  const b = el('button', 'row-icon');
-  b.setAttribute('aria-label', label);
-  Object.assign(b.dataset, data);
-  b.appendChild(icon(name));
-  return b;
-}
+const ME = 'me', BAND = 'band'; // openNameDialog targets besides setlists (setlist ids are 20 chars)
 
 /** metronome: the metronome panel; openTab(mode): switches tabs. */
 export function createBandPanel({ metronome, openTab }) {
@@ -56,6 +29,7 @@ export function createBandPanel({ metronome, openTab }) {
   }
   const failed = (e) => msg(friendlyError(e), true);
   const write = (p) => { p.catch(failed); }; // the screen updates from the local cache; only report problems
+  const plan = createPlanPanel({ band: () => ({ api, code, members }), write });
 
   // ---------- joining ----------
 
@@ -68,12 +42,16 @@ export function createBandPanel({ metronome, openTab }) {
     connecting = false;
     code = c;
     band = null; members = []; songs = []; setlists = [];
+    plan.reset();
     unwatch = api.watch(c, {
       band: (d) => { if (d) { band = d; msg(''); render(); } else lost('That band no longer exists.'); },
       members: (r) => { members = r; render(); },
       songs: (r) => { songs = r.sort(byName('title')); render(); renderCue(); renderPicker(); },
       setlists: (r) => { setlists = r.sort(byName('name')); render(); renderPicker(); },
-      error: (e) => (e && e.code === 'permission-denied' ? lost("You're not in this band any more.") : failed(e)),
+      free: (r) => { plan.setFree(r); render(); },
+      polls: (r) => { plan.setPolls(r); render(); },
+      // the member list is what tells you you've left; other refusals are just shown
+      error: (e, what) => (e && e.code === 'permission-denied' && what === 'members' ? lost("You're not in this band any more.") : failed(e)),
     });
   }
 
@@ -144,23 +122,21 @@ export function createBandPanel({ metronome, openTab }) {
 
     const list = pane === 'setlist' ? listById(openListId) : null;
     const shown = pane === 'setlist' && !list ? 'setlists' : pane; // e.g. deleted on another phone
-    document.querySelectorAll('#bandTabs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (shown === 'songs' ? 'songs' : 'setlists'))));
+    document.querySelectorAll('#bandTabs button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === (shown === 'setlist' ? 'setlists' : shown))));
     $('paneSongs').hidden = shown !== 'songs';
     $('paneSetlists').hidden = shown !== 'setlists';
     $('paneSetlist').hidden = shown !== 'setlist';
+    $('panePlan').hidden = shown !== 'plan';
     if (shown === 'songs') renderSongs();
     if (shown === 'setlists') renderSetlists();
     if (shown === 'setlist') renderSetlist(list);
+    if (shown === 'plan') plan.render();
   }
 
   function showRetry() {
     const b = el('button', 'link-btn', ' Try again');
     b.addEventListener('click', () => enter(settings.band.code));
     $('bandMsg').appendChild(b);
-  }
-
-  function empty(ul, text) {
-    ul.appendChild(el('li', 'empty', text + (settings.kawaii ? ' 🐾' : '')));
   }
 
   function renderSongs() {
@@ -277,26 +253,31 @@ export function createBandPanel({ metronome, openTab }) {
     $('songDialog').close();
   }
 
-  /** id: the setlist to rename, null for a new one, or ME for your own name. */
+  const NAMES = { // what the name dialog edits, besides setlists
+    [ME]: { title: 'Your name', max: LIMITS.member, hint: 'How the band sees you', value: () => (members.find((m) => m.id === api.uid) || { name: settings.me }).name },
+    [BAND]: { title: 'Band name', max: LIMITS.band, hint: '', value: () => band.name },
+  };
+
+  /** id: the setlist to rename, null for a new one, or ME / BAND. */
   function openNameDialog(id) {
     naming = id;
-    const me = id === ME;
+    const n = NAMES[id];
     const input = $('nameForm').elements.name;
-    const mine = members.find((m) => m.id === api.uid);
-    input.value = me ? (mine ? mine.name : settings.me) : id ? listById(id).name : '';
-    input.maxLength = me ? LIMITS.member : LIMITS.setlist;
-    input.placeholder = me ? 'How the band sees you' : 'Friday at the pub';
-    $('nameDialogTitle').textContent = me ? 'Your name' : id ? 'Setlist' : 'New setlist';
-    $('btnDeleteSetlist').hidden = !id || me;
+    input.value = n ? n.value() : id ? listById(id).name : '';
+    input.maxLength = n ? n.max : LIMITS.setlist;
+    input.placeholder = n ? n.hint : 'Friday at the pub';
+    $('nameDialogTitle').textContent = n ? n.title : id ? 'Setlist' : 'New setlist';
+    $('btnDeleteSetlist').hidden = !id || !!n;
     $('nameDialog').showModal();
     input.focus();
   }
 
   function saveName(e) {
     e.preventDefault();
-    const name = cleanText($('nameForm').elements.name.value, naming === ME ? LIMITS.member : LIMITS.setlist);
+    const name = cleanText($('nameForm').elements.name.value, NAMES[naming] ? NAMES[naming].max : LIMITS.setlist);
     if (!name) return;
     if (naming === ME) { setMe(name); write(api.renameMe(code, name)); }
+    else if (naming === BAND) write(api.renameBand(code, name));
     else if (naming) write(api.updateSetlist(code, naming, { name }));
     else {
       const { id, done } = api.newSetlist(code, name);
@@ -348,6 +329,7 @@ export function createBandPanel({ metronome, openTab }) {
   $('formCreate').addEventListener('submit', (e) => { e.preventDefault(); submitSetup('create'); });
   $('btnShare').addEventListener('click', share);
   $('btnRename').addEventListener('click', () => openNameDialog(ME));
+  $('btnRenameBand').addEventListener('click', () => openNameDialog(BAND));
   $('btnLeave').addEventListener('click', () => {
     if (!confirm('Leave ' + band.name + '? You can join again later with the code ' + code + '.')) return;
     write(api.leaveBand(code));

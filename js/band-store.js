@@ -80,13 +80,15 @@ function createApi(F, db, uid) {
     leaveBand: (code) => F.deleteDoc(memberRef(code)),
     /** Changes how you're listed in this band. */
     renameMe: (code, name) => F.updateDoc(memberRef(code), { name }),
+    renameBand: (code, name) => F.updateDoc(bandRef(code), { name }),
 
-    /** Live updates of one band. on: { band(data|null), members(rows), songs(rows), setlists(rows), error(e) }.
+    /** Live updates of one band. on: { band(data|null), members(rows), songs(rows), setlists(rows),
+        free(rows), polls(rows), error(e, what) } where what is 'band' or the collection.
         Returns a function that stops listening. */
     watch(code, on) {
       const offs = [
-        F.onSnapshot(bandRef(code), (s) => on.band(s.exists() ? s.data() : null), on.error),
-        ...['members', 'songs', 'setlists'].map((name) => F.onSnapshot(col(code, name), (s) => on[name](rows(s)), on.error)),
+        F.onSnapshot(bandRef(code), (s) => on.band(s.exists() ? s.data() : null), (e) => on.error(e, 'band')),
+        ...['members', 'songs', 'setlists', 'free', 'polls'].map((name) => F.onSnapshot(col(code, name), (s) => on[name](rows(s)), (e) => on.error(e, name))),
       ];
       return () => offs.forEach((off) => off());
     },
@@ -113,5 +115,24 @@ function createApi(F, db, uid) {
     },
     updateSetlist: (code, id, fields) => F.updateDoc(F.doc(col(code, 'setlists'), id), fields),
     deleteSetlist: (code, id) => F.deleteDoc(F.doc(col(code, 'setlists'), id)),
+
+    /** Your free times on one day (date "2026-10-18", times [start, end, …] in
+        minutes). Empty times removes the day; only do that if you had one. */
+    setFree(code, date, times) {
+      const ref = F.doc(col(code, 'free'), date + '_' + uid);
+      return times.length ? F.setDoc(ref, { uid, date, times }) : F.deleteDoc(ref);
+    },
+    /** Removes your free times on days that have passed. */
+    dropFree(code, dates) {
+      const b = F.writeBatch(db);
+      dates.forEach((d) => b.delete(F.doc(col(code, 'free'), d + '_' + uid)));
+      return b.commit();
+    },
+    newPoll: (code, poll) => F.setDoc(F.doc(col(code, 'polls')),
+      { ...poll, createdBy: uid, createdAt: F.serverTimestamp(), closed: false, winner: null, votes: {} }),
+    /** picks: option indexes; [] takes your vote back. */
+    vote: (code, id, picks) => F.updateDoc(F.doc(col(code, 'polls'), id), { ['votes.' + uid]: picks }),
+    closePoll: (code, id, winner) => F.updateDoc(F.doc(col(code, 'polls'), id), { closed: true, winner }),
+    deletePoll: (code, id) => F.deleteDoc(F.doc(col(code, 'polls'), id)),
   };
 }

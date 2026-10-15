@@ -10,6 +10,9 @@ rules_version = '2';
 // - Joining = adding yourself to the band's members. After that you can read and
 //   change the band's songs and setlists.
 // - You can only add, rename or remove yourself as a member.
+// - Free times: you can only add or change your own.
+// - Polls: anyone in the band can ask and vote (only their own vote, while the
+//   poll is open); only whoever asked can close it or delete it.
 // The size limits match js/band.js.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -30,6 +33,12 @@ service cloud.firestore {
     function validSetlist(d) {
       return only(d, ['name', 'songIds', 'createdAt'])
         && text(d.name, 1, 60) && d.songIds is list && d.songIds.size() <= 200;
+    }
+
+    function validPoll(d) {
+      return only(d, ['question', 'options', 'multi', 'createdBy', 'createdAt', 'closed', 'winner', 'votes'])
+        && text(d.question, 1, 100) && d.options is list && d.options.size() >= 2 && d.options.size() <= 10
+        && d.multi is bool;
     }
 
     match /bands/{b} {
@@ -68,6 +77,41 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
         allow update: if isMember(b) && validSetlist(request.resource.data)
           && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      // one doc per person per day, id "2026-10-18_<uid>"; times = [start, end, …] in minutes
+      match /free/{id} {
+        allow read: if isMember(b);
+        allow create, update: if isMember(b)
+          && only(request.resource.data, ['uid', 'date', 'times'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.date is string && request.resource.data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+          && id == request.resource.data.date + '_' + request.auth.uid
+          && request.resource.data.times is list && request.resource.data.times.size() >= 2
+          && request.resource.data.times.size() <= 16 && request.resource.data.times.size() % 2 == 0;
+        allow delete: if isMember(b) && resource.data.uid == request.auth.uid;
+      }
+
+      // votes = { uid: [option indexes] }
+      match /polls/{id} {
+        allow read: if isMember(b);
+        allow create: if isMember(b) && validPoll(request.resource.data)
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.closed == false && request.resource.data.winner == null
+          && request.resource.data.votes == {};
+        allow update: if isMember(b) && resource.data.closed == false && (
+          // vote: only your own entry, one pick unless the poll allows more
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['votes'])
+            && request.resource.data.votes.diff(resource.data.votes).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.votes[request.auth.uid] is list
+            && request.resource.data.votes[request.auth.uid].size() <= (resource.data.multi ? resource.data.options.size() : 1))
+          // close: only whoever asked, picking one of the options as the winner
+          || (resource.data.createdBy == request.auth.uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['closed', 'winner'])
+            && request.resource.data.closed == true && request.resource.data.winner is int
+            && request.resource.data.winner >= 0 && request.resource.data.winner < resource.data.options.size()));
+        allow delete: if isMember(b) && resource.data.createdBy == request.auth.uid;
       }
     }
   }

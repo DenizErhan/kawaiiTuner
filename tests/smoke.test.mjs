@@ -66,6 +66,10 @@ const shot = (name) => page.screenshot({ path: SHOTS + name + '.png' });
 const tap = async (sel) => {
   const el = await page.$(sel);
   expect(el, 'missing element ' + sel);
+  await el.evaluate((e) => { // scroll to it like a thumb would, if it's off screen
+    const r = e.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > innerHeight) e.scrollIntoView({ block: 'center' });
+  });
   const box = await el.boundingBox();
   expect(box && box.width > 0, sel + ' is not visible');
   await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
@@ -405,6 +409,108 @@ try {
     await typeInto('#nameForm [name="name"]', 'Deniz');
     await tap('#nameForm .go'); await sleep(250);
     expect((await text('#bandMembers')) === 'Deniz (you)', 'members: ' + await text('#bandMembers'));
+  });
+  await test('Rename band changes the title', async () => {
+    await tap('#btnRenameBand'); await sleep(300);
+    expect((await page.$eval('#nameForm [name="name"]', (e) => e.value)) === 'The Purrs', 'band name not filled in');
+    await typeInto('#nameForm [name="name"]', 'The Meows');
+    await tap('#nameForm .go'); await sleep(250);
+    expect((await text('#bandTitle')) === 'The Meows', 'title: ' + await text('#bandTitle'));
+    await tap('#btnRenameBand'); await sleep(300);
+    await typeInto('#nameForm [name="name"]', 'The Purrs');
+    await tap('#nameForm .go'); await sleep(250);
+  });
+
+  const setTimes = (from, until) => page.evaluate((a, b) => { // <input type="time"> is fiddly to type into
+    const [i, j] = document.querySelectorAll('#rangeList li:last-child input');
+    i.value = a; j.value = b;
+  }, from, until);
+  await test('Plan: a bandmate\'s free time shows in the next 7 days', async () => {
+    const code = await text('#bandCode');
+    await page.evaluate((key, code) => { // Ali joins and adds times on their phone
+      const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+      const s = JSON.parse(localStorage.getItem(key));
+      s[`bands/${code}/members/other`] = { name: 'Ali', joinedAt: 1 };
+      s[`bands/${code}/free/${day(0)}_other`] = { uid: 'other', date: day(0), times: [1080, 1320] };
+      s[`bands/${code}/free/${day(1)}_other`] = { uid: 'other', date: day(1), times: [1140, 1260] };
+      s[`bands/${code}/free/${day(-3)}_${localStorage.getItem('__fakeUid')}`] = { uid: localStorage.getItem('__fakeUid'), date: day(-3), times: [600, 700] };
+      localStorage.setItem(key, JSON.stringify(s));
+    }, FAKE_STORE_KEY, code);
+    await page.reload({ waitUntil: 'networkidle0' });
+    await waitHome();
+    await tap('#bandTabs button[data-v="plan"]'); await sleep(250);
+    expect(!(await hidden('#panePlan')) && await hidden('#paneSongs'), 'plan pane not shown');
+    expect((await text('#weekLabel')) === 'Next 7 days', 'week: ' + await text('#weekLabel'));
+    const r = await rows('#dayList');
+    expect(r.length === 7, r.length + ' days');
+    expect(r[0].startsWith('Today') && r[0].includes('No overlap yet') && r[0].includes('Ali 18:00–22:00'), 'today: ' + r[0]);
+    expect(r[2].includes('Tap to add'), 'day 3: ' + r[2]);
+    const old = await page.evaluate((key) => Object.keys(JSON.parse(localStorage.getItem(key))).filter((k) => k.includes('/free/')).length, FAKE_STORE_KEY);
+    expect(old === 2, 'your free time from 3 days ago was not cleaned up');
+    await noOverflow();
+    await shot('band-plan-empty');
+  });
+  await test('Plan: adding your free time shows when everyone is free', async () => {
+    await tap('#dayList li:nth-child(1) .day'); await sleep(300);
+    expect(await hidden('#btnClearDay'), '"Not free" shown with nothing to clear');
+    expect((await text('#dayOthers')).includes('Ali 18:00–22:00'), 'others: ' + await text('#dayOthers'));
+    await tap('#quickTimes button:nth-child(2)'); // Evening
+    const v = await page.$$eval('#rangeList input', (is) => is.map((i) => i.value).join(' '));
+    expect(v === '18:00 00:00', 'evening: ' + v);
+    await shot('band-day');
+    await tap('#dayForm .go'); await sleep(250);
+    expect((await rows('#dayList'))[0].includes('Everyone free 18:00–22:00'), 'today: ' + (await rows('#dayList'))[0]);
+
+    await tap('#dayList li:nth-child(2) .day'); await sleep(300);
+    await tap('#quickTimes button:nth-child(4)'); // + Other time
+    await setTimes('18:00', '17:00');
+    await tap('#dayForm .go'); await sleep(150);
+    expect(/end after/.test(await text('#dayErr')), 'end before start was accepted');
+    await setTimes('18:00', '20:30');
+    await tap('#dayForm .go'); await sleep(250);
+    expect((await rows('#dayList'))[1].includes('Everyone free 19:00–20:30'), 'tomorrow: ' + (await rows('#dayList'))[1]);
+  });
+  await test('Plan: a day poll from the best times; vote, then close it', async () => {
+    await tap('#btnDayPoll'); await sleep(300);
+    expect((await page.$eval('#pollForm [name="question"]', (e) => e.value)) === 'When do we practise?', 'question not filled in');
+    const opts = await page.$$eval('#optInputs input', (is) => is.map((i) => i.value));
+    expect(opts.length === 2 && opts[0].endsWith('18:00–22:00') && opts[1].endsWith('19:00–20:30'), 'options: ' + opts.join(' | '));
+    await tap('#pollForm .go'); await sleep(250);
+    const first = '#pollList li:nth-child(1)';
+    expect((await text(first + ' .poll-q')) === 'When do we practise?', 'poll not listed');
+    await tap(first + ' .opt[data-opt="0"]'); await sleep(200);
+    await tap(first + ' .opt[data-opt="1"]'); await sleep(200);
+    expect((await page.$$eval(first + ' .opt[aria-pressed="true"]', (b) => b.length)) === 2, 'multi-choice did not keep both');
+    expect((await text(first + ' .opt[data-opt="0"] .opt-who')) === 'Deniz', 'voter not shown');
+    await shot('band-poll');
+    await tap(first + ' [data-act="close"]'); await sleep(150);
+    expect((await text(first + ' .poll-hint')).includes('Tap the option'), 'no hint when closing');
+    await tap(first + ' .opt[data-opt="1"]'); await sleep(250);
+    expect(await page.$eval(first, (e) => e.classList.contains('closed')), 'poll not closed');
+    expect((await text(first + ' .opt.win .opt-label')).startsWith('✓') && (await text(first + ' .opt.win')).includes('19:00–20:30'), 'wrong winner');
+    expect((await text(first + ' .poll-meta')).includes('decided'), 'meta: ' + await text(first + ' .poll-meta'));
+  });
+  await test('Plan: a pick-one poll with your own options', async () => {
+    await tap('#btnAddPoll'); await sleep(300);
+    await tap('#pollForm .go'); await sleep(150);
+    expect(/question/.test(await text('#pollErr')), 'empty poll accepted');
+    await typeInto('#pollForm [name="question"]', 'Next cover?');
+    await typeInto('#optInputs li:nth-child(1) input', 'Creep');
+    await typeInto('#optInputs li:nth-child(2) input', 'Wonderwall');
+    await tap('#btnAddOption');
+    await page.type('#optInputs li:nth-child(3) input', 'Zombie');
+    await tap('#pollForm [name="multi"]');
+    await tap('#pollForm .go'); await sleep(250);
+    const first = '#pollList li:nth-child(1)';
+    expect((await text(first + ' .poll-q')) === 'Next cover?', 'open poll not on top');
+    expect((await text(first + ' .poll-meta')).includes('pick one'), 'meta: ' + await text(first + ' .poll-meta'));
+    await tap(first + ' .opt[data-opt="1"]'); await sleep(200);
+    await tap(first + ' .opt[data-opt="2"]'); await sleep(200);
+    const picked = await page.$$eval(first + ' .opt[aria-pressed="true"]', (b) => b.map((x) => x.dataset.opt).join());
+    expect(picked === '2', 'picked: ' + picked);
+    await noOverflow();
+    await shot('band-plan');
+    await page.evaluate(() => window.scrollTo(0, 0));
   });
   await test('Leave band goes back to the setup screen', async () => {
     await tap('#btnLeave'); await sleep(250);

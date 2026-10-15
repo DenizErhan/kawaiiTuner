@@ -123,14 +123,18 @@
         <div class="band-head-text">
           <h2 class="band-title" id="bandTitle"></h2>
           <p class="band-members" id="bandMembers"></p>
-          <button class="link-btn" id="btnRename">Change your name</button>
+          <div class="band-links">
+            <button class="link-btn" id="btnRename">Change your name</button>
+            <button class="link-btn" id="btnRenameBand">Rename band</button>
+          </div>
         </div>
         <button class="code-chip" id="btnShare" aria-label="Share the band code"><small>Code</small><span id="bandCode"></span></button>
       </div>
 
-      <div class="seg" id="bandTabs">
+      <div class="seg seg-3" id="bandTabs">
         <button data-v="songs" aria-pressed="true">Songs</button>
         <button data-v="setlists" aria-pressed="false">Setlists</button>
+        <button data-v="plan" aria-pressed="false">Plan</button>
       </div>
 
       <div class="pane" id="paneSongs">
@@ -152,6 +156,22 @@
         <button class="go go-sm" id="btnPlaySetlist">Play setlist</button>
         <ol class="list" id="setlistSongs"></ol>
         <button class="add-btn" id="btnPickSongs">+ Add songs</button>
+      </div>
+
+      <div class="pane" id="panePlan" hidden>
+        <h3 class="pane-h">Polls</h3>
+        <button class="add-btn" id="btnAddPoll">+ New poll</button>
+        <ul class="list" id="pollList"></ul>
+
+        <h3 class="pane-h">Free time</h3>
+        <div class="week-nav">
+          <button class="icon-btn" id="weekPrev" aria-label="Earlier week">&lsaquo;</button>
+          <strong id="weekLabel"></strong>
+          <button class="icon-btn" id="weekNext" aria-label="Later week">&rsaquo;</button>
+        </div>
+        <ul class="list" id="dayList"></ul>
+        <button class="add-btn" id="btnDayPoll">Make a poll from this week’s best times</button>
+        <p class="plan-msg" id="planMsg" role="status" aria-live="polite"></p>
       </div>
 
       <button class="ghost" id="btnLeave">Leave band</button>
@@ -232,6 +252,42 @@
       <button type="button" class="ghost danger" id="btnDeleteSetlist">Delete setlist</button>
       <button type="button" class="ghost" id="btnCancelName">Cancel</button>
       <button class="go go-sm" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pop" id="dayDialog" aria-labelledby="dayDialogTitle">
+  <form method="dialog" id="dayForm" novalidate>
+    <h2 id="dayDialogTitle"></h2>
+    <p class="pop-hint">When are you free? Add as many times as you like.</p>
+    <ul class="ranges" id="rangeList"></ul>
+    <div class="quick" id="quickTimes">
+      <button type="button" data-s="10:00" data-e="18:00">Daytime</button>
+      <button type="button" data-s="18:00" data-e="00:00">Evening</button>
+      <button type="button" data-s="00:00" data-e="00:00">All day</button>
+      <button type="button" data-s="18:00" data-e="21:00">+ Other time</button>
+    </div>
+    <p class="pop-hint err" id="dayErr"></p>
+    <p class="pop-hint" id="dayOthers"></p>
+    <div class="pop-actions">
+      <button type="button" class="ghost danger" id="btnClearDay">Not free</button>
+      <button type="button" class="ghost" id="btnCancelDay">Cancel</button>
+      <button class="go go-sm" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pop" id="pollDialog" aria-labelledby="pollDialogTitle">
+  <form method="dialog" id="pollForm" novalidate>
+    <h2 id="pollDialogTitle">New poll</h2>
+    <label class="field"><span>Question</span><input name="question" maxlength="100" required autocomplete="off" placeholder="Which cover do we learn next?"></label>
+    <div class="field"><span>Options</span><ul class="opt-inputs" id="optInputs"></ul></div>
+    <button type="button" class="link-btn" id="btnAddOption">+ Add option</button>
+    <label class="check"><input type="checkbox" name="multi" checked> People can pick more than one</label>
+    <p class="pop-hint err" id="pollErr"></p>
+    <div class="pop-actions">
+      <button type="button" class="ghost" id="btnCancelPoll">Cancel</button>
+      <button class="go go-sm" value="save">Ask the band</button>
     </div>
   </form>
 </dialog>

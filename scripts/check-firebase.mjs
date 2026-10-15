@@ -75,6 +75,37 @@ try {
     await expect('member edits a song', true, () => F.updateDoc(F.doc(songs(b), songId), { bpm: 120 }));
     await expect('member cannot change who added a song', false, () => F.updateDoc(F.doc(songs(b), songId), { addedBy: b.uid }));
     await expect('member makes a setlist', true, () => F.setDoc(F.doc(F.collection(b.db, 'bands', code, 'setlists')), { name: 'Gig', songIds: [songId], createdAt: ts() }));
+    await expect('member renames the band', true, () => F.updateDoc(band(b), { name: 'Rules check (renamed) ' + new Date().toISOString().slice(0, 10) }));
+
+    const today = new Date().toISOString().slice(0, 10);
+    const free = (u, uid = u.uid) => F.doc(u.db, 'bands', code, 'free', today + '_' + uid);
+    await expect('member adds free time', true, () => F.setDoc(free(b), { uid: b.uid, date: today, times: [1080, 1260] }));
+    await expect('member cannot add free time for someone else', false, () => F.setDoc(free(b, a.uid), { uid: a.uid, date: today, times: [1080, 1260] }));
+    await expect('free times must come in pairs', false, () => F.setDoc(free(b), { uid: b.uid, date: today, times: [1080] }));
+    await expect('outsider cannot read free times', false, async () => {
+      const c = await user('c');
+      await F.getDocs(F.collection(c.db, 'bands', code, 'free'));
+    });
+    await expect("member cannot remove someone else's free time", false, () => F.deleteDoc(free(a, b.uid)));
+    await expect('member removes their free time', true, () => F.deleteDoc(free(b)));
+
+    let pollId;
+    const poll = (u) => F.doc(u.db, 'bands', code, 'polls', pollId);
+    await expect('member asks a poll', true, async () => {
+      const r = F.doc(F.collection(a.db, 'bands', code, 'polls'));
+      pollId = r.id;
+      await F.setDoc(r, { question: 'Check?', options: ['Yes', 'No'], multi: false, createdBy: a.uid, createdAt: ts(), closed: false, winner: null, votes: {} });
+    });
+    await expect('a poll needs 2 options', false, () => F.setDoc(F.doc(F.collection(a.db, 'bands', code, 'polls')),
+      { question: 'Check?', options: ['Yes'], multi: false, createdBy: a.uid, createdAt: ts(), closed: false, winner: null, votes: {} }));
+    await expect('member votes', true, () => F.updateDoc(poll(b), { ['votes.' + b.uid]: [0] }));
+    await expect('two picks on a pick-one poll are refused', false, () => F.updateDoc(poll(b), { ['votes.' + b.uid]: [0, 1] }));
+    await expect('member cannot vote for someone else', false, () => F.updateDoc(poll(b), { ['votes.' + a.uid]: [1] }));
+    await expect('only whoever asked can close a poll', false, () => F.updateDoc(poll(b), { closed: true, winner: 0 }));
+    await expect('whoever asked closes the poll', true, () => F.updateDoc(poll(a), { closed: true, winner: 0 }));
+    await expect('no voting on a closed poll', false, () => F.updateDoc(poll(b), { ['votes.' + b.uid]: [1] }));
+    await expect('only whoever asked can delete a poll', false, () => F.deleteDoc(poll(b)));
+    await expect('whoever asked deletes the poll', true, () => F.deleteDoc(poll(a)));
     await expect('member cannot remove another member', false, () => F.deleteDoc(member(b, a.uid)));
     await expect('leaving the band works', true, () => F.deleteDoc(member(b, b.uid)));
     await expect('after leaving, songs are private again', false, () => F.getDocs(songs(b)));

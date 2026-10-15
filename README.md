@@ -52,7 +52,10 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 - Shared song pool: title, artist, key, BPM, beats, notes. Changes show up on everyone's phone live.
 - Setlists: pick songs from the pool, put them in order.
 - Tap a song: the metronome takes its tempo and beats. Play a setlist: a bar in the metronome steps through it (‹ ›).
-- Works offline once it has loaded: songs and setlists are cached on the phone, and edits are sent when it's back online.
+- Anyone can change their own name, and rename the band.
+- Plan: everyone adds when they're free (exact times, a week at a time from today); each day shows who overlaps and the best window. One tap turns the week's best times into a "When do we practise?" poll.
+- Polls: any question with your own options, pick one or pick any, results live with names. Whoever asked closes it by tapping the winner.
+- Works offline once it has loaded: songs, setlists, polls and free times are cached on the phone, and edits are sent when it's back online.
 
 ## Try it on your phone
 
@@ -76,7 +79,7 @@ On the phone: open the link, tap Start, allow the microphone. To get an app icon
 1. Host on HTTPS (GitHub Pages or Cloudflare Pages) so it works on a phone.
 2. PWA: done (manifest, icons, network-first service worker that also works offline).
 3. Vocalist mode: scrolling real-time pitch line while singing.
-4. Band tools: done (bands with join codes, song pool, setlists that drive the metronome). Next: practice poll.
+4. Band tools: done (bands with join codes, song pool, setlists that drive the metronome, free-time calendar, polls).
 5. Later: wrap for the app stores if it takes off (Google Play about $25 one-time, Apple about $99/year).
 
 ## Firebase (band tab)
@@ -119,6 +122,9 @@ js/theme.js           applies theme colors + pattern, mixes derived colors
 js/settings-panel.js  the settings sheet UI
 js/wake-lock.js       keeps the screen on while tuning
 js/band-panel.js      band tab UI: setup, songs, setlists, dialogs, the metronome's setlist bar
+js/plan-panel.js      the band's Plan pane: polls, free-time week, their dialogs
+js/plan.js            dates, time ranges, overlaps, vote counts (pure)
+js/dom.js             small DOM helpers shared by the band panels
 js/band-store.js      all Firebase calls (SDK loaded on first use), anonymous sign-in, offline cache
 js/band.js            band codes, input cleanup, list moves (pure)
 firestore.rules       who can read/write what; publish it in the Firebase console

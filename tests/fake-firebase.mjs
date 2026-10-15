@@ -72,7 +72,12 @@ const ops = {
   set: (s, ref, d) => { s[ref.path] = resolve(d); },
   update: (s, ref, d) => {
     if (!s[ref.path]) throw Object.assign(new Error('No document to update'), { code: 'not-found' });
-    Object.assign(s[ref.path], resolve(d));
+    Object.entries(resolve(d)).forEach(([k, v]) => { // "votes.uid" sets a field inside a map
+      const keys = k.split('.');
+      let o = s[ref.path];
+      keys.slice(0, -1).forEach((p) => { o = o[p] = o[p] || {}; });
+      o[keys[keys.length - 1]] = v;
+    });
   },
   delete: (s, ref) => { delete s[ref.path]; },
 };
