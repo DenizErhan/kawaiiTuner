@@ -322,6 +322,25 @@ try {
     await closeSettings();
   });
 
+  console.log('language');
+  await test('Settings > Language switches to Türkçe, and back', async () => {
+    await openSettings();
+    expect((await page.$$('#langs button')).length === 2, 'no language picker');
+    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), tap('#langs button[data-v="tr"]')]);
+    expect(await page.evaluate(() => document.documentElement.lang) === 'tr', 'page language not tr');
+    expect((await text('#topTitle')) === 'Akort' && (await text('#btnGoLabel')) === 'Başlat', 'not in Turkish: ' + await text('#topTitle'));
+    await tap('#btnMenu'); await sleep(350);
+    expect((await text('#drawer a[data-route="metronome"]')) === 'Metronom', 'menu not in Turkish');
+    await shot('turkish-menu');
+    await page.keyboard.press('Escape'); await sleep(200);
+    await shot('turkish-tuner');
+    await openSettings();
+    expect((await text('#sheetTitle')) === 'Ayarlar', 'settings not in Turkish');
+    await shot('turkish-settings');
+    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), tap('#langs button[data-v="en"]')]);
+    expect((await text('#topTitle')) === 'Tuner', 'did not switch back');
+  });
+
   console.log('band');
   // Firebase is replaced by tests/fake-firebase.mjs. Page-level interception
   // doesn't see requests a service worker makes, so skip the worker from here on.
@@ -705,6 +724,20 @@ try {
       await shot(`tuner-${name}`);
     });
   }
+
+  await test('Turkish texts fit a tiny phone too', async () => {
+    await phone('tiny');
+    await editSettings({ lang: 'tr' });
+    await page.reload({ waitUntil: 'networkidle0' });
+    for (const route of ['band', 'band/calendar', 'band/polls', 'band/songs', 'metronome', 'tuner']) {
+      await page.evaluate((r) => { location.hash = '#/' + r; }, route); await sleep(300);
+      await noOverflow();
+      await shot('turkish-' + route.replace('/', '-') + '-tiny');
+    }
+    await inView('#btnGo');
+    await editSettings({ lang: 'en' });
+    await page.reload({ waitUntil: 'networkidle0' });
+  });
 
   await test('no errors during the whole run', () => expect(problems.length === 0, problems.join('\n       ')));
 } finally {

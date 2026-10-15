@@ -256,6 +256,27 @@ test('keys built at runtime (themes, colors, patterns) exist too', () => {
     for (const sub of ['polls', 'calendar', 'songs', 'setlists']) assert.ok(find(dict, 'band.home.' + sub) && find(dict, 'nav.' + sub), code + ' ' + sub);
   }
 });
+test('every language has every English text, with the same {placeholders}', () => {
+  const leaves = (o, pre = '') => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? leaves(v, pre + k + '.') : [[pre + k, v]]));
+  const holes = (v) => (typeof v === 'string' ? [...v.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join() : null);
+  for (const [code, dict] of Object.entries(ALL)) {
+    for (const [key, v] of leaves(ALL.en)) {
+      const mine = find(dict, key);
+      assert.ok(mine !== undefined, code + ' has no ' + key);
+      if (typeof v === 'string' && typeof mine === 'string') assert.equal(holes(mine), holes(v), code + ' ' + key + ' placeholders');
+      if (Array.isArray(v)) assert.equal(mine.length, v.length, code + ' ' + key + ' length');
+    }
+  }
+});
+test('Turkish: plurals, dates, and the phone language picks it', () => {
+  setLang('tr');
+  assert.equal(t('band.home.songCount', { n: 3 }), '3 şarkı');
+  assert.equal(t('nav.needsVote', { n: 2 }), '2 anket oyunu bekliyor');
+  assert.equal(dayLabel('2026-10-17'), 'Cmt 17 Eki');
+  setLang('en');
+  assert.equal(pickLang(null, ['tr-TR', 'en-US']), 'tr');
+  assert.equal(pickLang('en', ['tr-TR']), 'en', 'a saved choice wins');
+});
 test('t() fills in values and plurals, and falls back to English', () => {
   setLang('en');
   assert.equal(t('band.you', { name: 'Ali' }), 'Ali (you)');

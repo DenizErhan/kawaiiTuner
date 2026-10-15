@@ -43,6 +43,7 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 - Made for phones: portrait and landscape layouts, safe areas (notch), no double-tap zoom, swipe the settings sheet down to close, hold +/- to step quickly, screen stays on while tuning, add to home screen (web manifest + icons).
 - Reference pitch A4 (400-480 Hz; double-tap the value to reset to 440).
 - Note names: C D E or Do Re Mi.
+- English and Turkish (Settings > Language; starts in Turkish on a phone set to Turkish).
 - Metronome: 30-250 BPM with tempo names, slider and hold-to-repeat +/-, 1-12 beats per bar with an accented first beat, tap tempo. Clicks are scheduled on the Web Audio clock, so timing stays exact. A Maneki Neko beckons on every beat, sways, and jingles its bell on beat 1.
 - Only one mode runs at a time, so the tuner never hears the clicks.
 - Settings saved in the browser (localStorage), including the last screen and the tempo.
@@ -107,7 +108,7 @@ sw.js                 service worker: network first (fresh files after a deploy)
 js/main.js            entry point: language, theme, shell, screens, routing
 js/version.js         build label shown in Settings; bump per deploy
 js/app/               router.js (#/addresses, back button), shell.js (top bar + ☰ menu)
-js/i18n/              i18n.js (t(), language choice) and one file per language (en.js)
+js/i18n/              i18n.js (t(), language choice) and one file per language (en.js, tr.js)
 js/core/              pure logic, unit-tested in Node: yin, notes, pitch-tracker, metronome
                       engine, band (codes, input cleanup), plan (dates, overlaps, votes), settings
 js/services/          the outside world: band-store (Firebase), mic, wake-lock

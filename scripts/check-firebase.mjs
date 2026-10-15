@@ -119,6 +119,7 @@ try {
   const phone = async () => {
     const ctx = await browser.createIncognitoBrowserContext();
     const p = await ctx.newPage();
+    await p.setViewport({ width: 412, height: 915, isMobile: true, hasTouch: false });
     p.on('pageerror', (e) => problems.push(e.message));
     p.on('console', (m) => { if (m.type() === 'error') problems.push(m.text()); });
     await p.goto(`http://127.0.0.1:${PORT}/#/band`, { waitUntil: 'networkidle0' });
@@ -126,28 +127,29 @@ try {
   };
   const home = (p) => p.waitForFunction(() => !document.getElementById('bandHome').hidden, { timeout: 15000 });
   const open = (p, hash) => p.evaluate((h) => { location.hash = h; }, hash);
+  let step = '';
+  const click = async (p, sel) => { step = sel; await p.waitForSelector(sel, { visible: true, timeout: 15000 }); await p.click(sel); };
   try {
     const pa = await phone();
     await pa.type('#meName', 'Phone A');
     await pa.type('#bandName', 'Rules check (app)');
-    await pa.click('#formCreate .go');
+    await click(pa, '#formCreate .go');
     await home(pa);
-    await pa.click('#btnBandMenu');
+    await click(pa, '#btnBandMenu');
     const code = await pa.$eval('#bandCode', (e) => e.textContent);
-    await pa.click('#btnMenuDone');
+    await pa.keyboard.press('Escape'); // closes the menu (Done is tapped in the phone tests)
     await open(pa, '#/band/songs');
-    await pa.waitForSelector('#btnAddSong', { visible: true });
-    await pa.click('#btnAddSong');
+    await click(pa, '#btnAddSong');
     await pa.type('#songForm [name="title"]', 'Live check song');
     await pa.type('#songForm [name="bpm"]', '99');
-    await pa.click('#songForm .go');
+    await click(pa, '#songForm .go');
     await pa.waitForFunction(() => document.getElementById('songList').textContent.includes('Live check song'));
     report(true, 'phone A starts a band (' + code + ') and adds a song');
 
     const pb = await phone();
     await pb.type('#meName', 'Phone B');
     await pb.type('#joinCode', code);
-    await pb.click('#formJoin .go');
+    await click(pb, '#formJoin .go');
     await home(pb);
     await open(pb, '#/band/songs');
     await pb.waitForFunction(() => document.getElementById('songList').textContent.includes('Live check song'), { timeout: 15000 });
@@ -156,7 +158,7 @@ try {
     await pa.waitForFunction(() => document.getElementById('bandMembers').textContent.includes('Phone B'), { timeout: 15000 });
     report(true, 'phone A sees phone B join, live');
   } catch (e) {
-    report(false, 'app flow', e.message);
+    report(false, 'app flow', step + ': ' + e.message);
   }
   report(problems.length === 0, 'no errors in the app', problems.join('\n       '));
 } finally {

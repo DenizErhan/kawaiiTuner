@@ -2,8 +2,9 @@
    folder through t('area.key'), so adding a language is adding a file.
    No DOM here, so the Node unit tests use it too. */
 import en from './en.js';
+import tr from './tr.js';
 
-const LANGS = { en };
+const LANGS = { en, tr };
 let lang = 'en';
 
 /** [{ code, name }] for the language picker, each name in its own language. */
