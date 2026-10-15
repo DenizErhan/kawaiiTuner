@@ -1,0 +1,74 @@
+rules_version = '2';
+
+// Security rules for the band features. Paste this whole file into the Firebase
+// console (Databases & Storage > Firestore > Rules) and click Publish.
+//
+// Who can do what:
+// - Every phone signs in anonymously (no account, no password).
+// - Anyone signed in can look up one band by its code (to join it), but can't
+//   list bands, so codes can't be harvested.
+// - Joining = adding yourself to the band's members. After that you can read and
+//   change the band's songs and setlists.
+// - You can only add, rename or remove yourself as a member.
+// The size limits match js/band.js.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function bandPath(b) { return /databases/$(database)/documents/bands/$(b); }
+    function isMember(b) {
+      return signedIn() && exists(/databases/$(database)/documents/bands/$(b)/members/$(request.auth.uid));
+    }
+    function text(v, lo, hi) { return v is string && v.size() >= lo && v.size() <= hi; }
+    function optInt(v, lo, hi) { return v == null || (v is int && v >= lo && v <= hi); }
+    function only(d, keys) { return d.keys().hasOnly(keys) && d.keys().hasAll(keys); }
+
+    function validSong(d) {
+      return only(d, ['title', 'artist', 'key', 'bpm', 'beats', 'notes', 'addedBy', 'createdAt'])
+        && text(d.title, 1, 80) && text(d.artist, 0, 80) && text(d.key, 0, 12)
+        && optInt(d.bpm, 30, 250) && optInt(d.beats, 1, 12) && text(d.notes, 0, 300);
+    }
+    function validSetlist(d) {
+      return only(d, ['name', 'songIds', 'createdAt'])
+        && text(d.name, 1, 60) && d.songIds is list && d.songIds.size() <= 200;
+    }
+
+    match /bands/{b} {
+      allow get: if signedIn();
+      allow create: if signedIn() && b.matches('^[A-Z0-9]{4}-[A-Z0-9]{4}$')
+        && only(request.resource.data, ['name', 'createdBy', 'createdAt'])
+        && text(request.resource.data.name, 1, 40)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.createdAt == request.time;
+      allow update: if isMember(b)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+        && text(request.resource.data.name, 1, 40);
+
+      match /members/{uid} {
+        allow read: if isMember(b);
+        // existsAfter: the band's creator is added in the same batch that creates the band
+        allow create, update: if signedIn() && uid == request.auth.uid && existsAfter(bandPath(b))
+          && only(request.resource.data, ['name', 'joinedAt'])
+          && text(request.resource.data.name, 1, 30) && request.resource.data.joinedAt is timestamp;
+        allow delete: if signedIn() && uid == request.auth.uid;
+      }
+
+      match /songs/{id} {
+        allow read, delete: if isMember(b);
+        allow create: if isMember(b) && validSong(request.resource.data)
+          && request.resource.data.addedBy == request.auth.uid
+          && request.resource.data.createdAt == request.time;
+        allow update: if isMember(b) && validSong(request.resource.data)
+          && request.resource.data.addedBy == resource.data.addedBy
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+
+      match /setlists/{id} {
+        allow read, delete: if isMember(b);
+        allow create: if isMember(b) && validSetlist(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if isMember(b) && validSetlist(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+      }
+    }
+  }
+}

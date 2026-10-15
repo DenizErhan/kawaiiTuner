@@ -5,7 +5,8 @@
     "serve": "node scripts/serve.mjs",
     "test:unit": "node tests/unit.test.mjs",
     "test:browser": "node tests/smoke.test.mjs",
-    "test": "npm run test:unit && npm run test:browser"
+    "test": "npm run test:unit && npm run test:browser",
+    "check:firebase": "node scripts/check-firebase.mjs"
   },
   "devDependencies": {
     "puppeteer-core": "21.11.0"

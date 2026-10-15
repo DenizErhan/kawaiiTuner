@@ -1,12 +1,13 @@
 /* Browser smoke test: serves the app locally, opens it in headless Chrome as an
    Android phone (touch, fake microphone) and checks that every screen is styled
-   and every control does something. `npm run test:browser`.
+   and every control does something. Firebase is faked (tests/fake-firebase.mjs). `npm run test:browser`.
    Screenshots land in tests/screenshots/ for a quick look.
    Uses your installed Chrome/Edge; set CHROME_PATH to pick another. */
 import { existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import puppeteer from 'puppeteer-core';
 import { serve } from '../scripts/serve.mjs';
+import { FAKE_SDK, FAKE_STORE_KEY } from './fake-firebase.mjs';
 
 const PORT = 8799;
 const URL_ = `http://127.0.0.1:${PORT}/`;
@@ -262,10 +263,181 @@ try {
     await tap('#btnClose'); await sleep(450);
   });
 
+  console.log('band');
+  // Firebase is replaced by tests/fake-firebase.mjs. Page-level interception
+  // doesn't see requests a service worker makes, so skip the worker from here on.
+  await page.setBypassServiceWorker(true);
+  await page.setRequestInterception(true);
+  page.on('request', (r) => {
+    const m = r.url().match(/^https:\/\/www\.gstatic\.com\/firebasejs\/[\d.]+\/(firebase-\w+\.js)$/);
+    if (m && FAKE_SDK[m[1]]) r.respond({ status: 200, contentType: 'text/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: FAKE_SDK[m[1]] });
+    else r.continue();
+  });
+  page.on('dialog', (d) => d.accept()); // "Delete …?" / "Leave …?" confirms
+  const typeInto = async (sel, value) => {
+    await page.$eval(sel, (e) => { e.value = ''; });
+    await page.type(sel, value);
+  };
+  const rows = (sel) => page.$$eval(sel + ' > li', (ls) => ls.map((l) => l.textContent.replace(/\s+/g, ' ').trim()));
+  const hidden = (sel) => page.$eval(sel, (e) => e.hidden || getComputedStyle(e).display === 'none');
+  const editSettings = (fields) => page.evaluate((f) => {
+    const st = JSON.parse(localStorage.getItem('tuner.settings.v1'));
+    localStorage.setItem('tuner.settings.v1', JSON.stringify(Object.assign(st, f)));
+  }, fields);
+  const addSong = async (f) => {
+    await tap('#btnAddSong'); await sleep(300);
+    for (const [k, v] of Object.entries(f)) await typeInto(`#songForm [name="${k}"]`, String(v));
+    await tap('#songForm .go'); await sleep(250);
+  };
+  const waitHome = () => page.waitForFunction(() => !document.getElementById('bandHome').hidden, { timeout: 4000 });
+
+  await test('Band tab shows join and start forms', async () => {
+    await tap('#tabBand'); await sleep(250);
+    expect(await page.$eval('#viewBand', (e) => !e.hidden), 'band view hidden');
+    expect(!(await hidden('#bandSetup')) && await hidden('#bandHome'), 'expected the setup screen');
+    await noOverflow();
+    await shot('band-setup');
+  });
+  await test('asks for your name first', async () => {
+    await typeInto('#bandName', 'The Purrs');
+    await tap('#formCreate .go'); await sleep(150);
+    expect(/your name/i.test(await text('#bandMsg')), 'no hint, got: ' + await text('#bandMsg'));
+  });
+  await test('Start band makes a band with a code, you as member', async () => {
+    await typeInto('#meName', 'Deniz');
+    await tap('#formCreate .go');
+    await waitHome();
+    expect((await text('#bandTitle')) === 'The Purrs', 'title: ' + await text('#bandTitle'));
+    expect(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/.test(await text('#bandCode')), 'code: ' + await text('#bandCode'));
+    expect((await text('#bandMembers')) === 'Deniz (you)', 'members: ' + await text('#bandMembers'));
+    expect(problems.length === 0, problems.join('\n       '));
+  });
+  await test('add songs to the pool (sorted by title)', async () => {
+    await addSong({ title: 'Wonderwall', artist: 'Oasis', key: 'F#m', bpm: 87 });
+    await addSong({ title: 'Seven Nation Army', bpm: 124 });
+    const r = await rows('#songList');
+    expect(r.length === 2, 'rows: ' + r.join(' | '));
+    expect(r[0].startsWith('Seven Nation Army') && r[1].includes('Oasis · F#m · 87 BPM'), 'rows: ' + r.join(' | '));
+    await shot('band-songs');
+    await noOverflow();
+  });
+  await test('"Use the metronome tempo" fills BPM; Cancel adds nothing', async () => {
+    await tap('#btnAddSong'); await sleep(300);
+    await tap('#btnUseTempo');
+    expect(Number(await page.$eval('#songForm [name="bpm"]', (e) => e.value)) > 0, 'bpm not filled');
+    await shot('band-song-dialog');
+    await tap('#btnCancelSong'); await sleep(200);
+    expect(!(await page.$eval('#songDialog', (d) => d.open)), 'dialog still open');
+    expect((await rows('#songList')).length === 2, 'cancel added a song');
+  });
+  await test('tapping a song loads its tempo into the metronome', async () => {
+    await tap('#songList li:nth-child(2) .row-main');
+    await sleep(250);
+    expect(await page.$eval('#viewMetro', (e) => !e.hidden), 'did not switch to the metronome');
+    expect((await text('#bpmVal')) === '87', 'bpm ' + await text('#bpmVal'));
+    expect((await text('#cueTitle')) === 'Wonderwall', 'bar shows ' + await text('#cueTitle'));
+    expect(await hidden('#cuePrev'), 'prev/next should be hidden for one song');
+    await noOverflow(); await inView('#btnMetro');
+    await tap('#cueClose');
+    expect(await hidden('#cue'), 'bar did not close');
+  });
+  await test('make a setlist, add songs, reorder', async () => {
+    await tap('#tabBand'); await sleep(200);
+    await tap('#bandTabs button[data-v="setlists"]');
+    await tap('#btnAddSetlist'); await sleep(300);
+    await typeInto('#nameForm [name="name"]', 'Friday');
+    await tap('#nameForm .go'); await sleep(250);
+    expect(!(await hidden('#paneSetlist')) && (await text('#setlistTitle')) === 'Friday', 'setlist not opened');
+    await tap('#btnPickSongs'); await sleep(300);
+    await tap('#pickList li:nth-child(2) button'); await sleep(100); // Wonderwall
+    await tap('#pickList li:nth-child(1) button'); await sleep(100); // Seven Nation Army
+    await shot('band-pick');
+    await tap('#btnPickDone'); await sleep(200);
+    let r = await rows('#setlistSongs');
+    expect(r[0].includes('Wonderwall') && r[1].includes('Seven Nation Army'), 'order: ' + r.join(' | '));
+    await tap('#setlistSongs li:nth-child(1) [data-move]:not([disabled])'); // move Wonderwall down
+    await sleep(150);
+    r = await rows('#setlistSongs');
+    expect(r[0].includes('Seven Nation Army') && r[1].includes('Wonderwall'), 'after move: ' + r.join(' | '));
+    await shot('band-setlist');
+    await noOverflow();
+  });
+  await test('play the setlist and step through it in the metronome', async () => {
+    await tap('#btnPlaySetlist'); await sleep(250);
+    expect((await text('#bpmVal')) === '124', 'bpm ' + await text('#bpmVal'));
+    expect((await text('#cuePos')) === 'Friday · 1/2', 'pos ' + await text('#cuePos'));
+    await tap('#cueNext'); await sleep(100);
+    expect((await text('#bpmVal')) === '87' && (await text('#cueTitle')) === 'Wonderwall', 'next did not load song 2');
+    expect(await page.$eval('#cueNext', (b) => b.disabled), 'next should be disabled at the end');
+    await shot('metronome-setlist');
+    await noOverflow(); await inView('#btnMetro');
+  });
+  await test('editing a song updates the list; deleting it leaves the setlist', async () => {
+    await tap('#tabBand'); await sleep(200);
+    await tap('#bandTabs button[data-v="songs"]');
+    await tap('#songList li:nth-child(1) .row-icon'); await sleep(300); // Seven Nation Army
+    await typeInto('#songForm [name="bpm"]', '120');
+    await tap('#songForm .go'); await sleep(200);
+    expect((await rows('#songList'))[0].includes('120 BPM'), 'edit not shown');
+    await tap('#songList li:nth-child(1) .row-icon'); await sleep(300);
+    await tap('#btnDeleteSong'); await sleep(200);
+    expect((await rows('#songList')).length === 1, 'song not deleted');
+    await tap('#bandTabs button[data-v="setlists"]');
+    const r = await rows('#setlistList');
+    expect(r[0].includes('1 song'), 'setlist still counts it: ' + r[0]);
+    expect((await text('#cueTitle')) === 'Wonderwall', 'metronome bar lost the remaining song');
+  });
+  await test('band is remembered after reload', async () => {
+    await page.reload({ waitUntil: 'networkidle0' });
+    await waitHome();
+    expect((await text('#bandTitle')) === 'The Purrs', 'band not reopened');
+  });
+  await test('Leave band goes back to the setup screen', async () => {
+    await tap('#btnLeave'); await sleep(250);
+    expect(!(await hidden('#bandSetup')), 'setup not shown');
+    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('tuner.settings.v1')).band) === null, 'band not forgotten');
+  });
+  await test('a wrong code is refused', async () => {
+    await typeInto('#joinCode', 'zzzz-zzzz');
+    await tap('#formJoin .go');
+    await page.waitForFunction(() => /no band/i.test(document.getElementById('bandMsg').textContent), { timeout: 3000 });
+  });
+  await test('an invite link opens the Band tab with the code filled in, and joins', async () => {
+    await page.evaluate((key) => { // a band someone else started on their phone
+      const s = JSON.parse(localStorage.getItem(key) || '{}');
+      s['bands/TEST-2345'] = { name: 'Neko Noise', createdBy: 'other', createdAt: 1 };
+      s['bands/TEST-2345/members/other'] = { name: 'Ali', joinedAt: 1 };
+      s['bands/TEST-2345/songs/s1'] = { title: 'Purr Blues', artist: '', key: 'E', bpm: 72, beats: 3, notes: '', addedBy: 'other', createdAt: 1 };
+      localStorage.setItem(key, JSON.stringify(s));
+    }, FAKE_STORE_KEY);
+    await editSettings({ mode: 'tuner' });
+    await page.goto(URL_ + '?join=test2345', { waitUntil: 'networkidle0' });
+    expect(await page.$eval('#viewBand', (e) => !e.hidden), 'band tab not opened');
+    expect((await page.$eval('#joinCode', (e) => e.value)) === 'TEST-2345', 'code not filled in');
+    expect(!(await page.evaluate(() => location.search)), 'invite left in the address bar');
+    expect((await page.$eval('#meName', (e) => e.value)) === 'Deniz', 'name not remembered');
+    await tap('#formJoin .go');
+    await waitHome();
+    expect((await text('#bandMembers')) === 'Ali, Deniz (you)', 'members: ' + await text('#bandMembers'));
+    expect((await rows('#songList'))[0].includes('E · 72 BPM · 3/4'), 'their song missing');
+  });
+  await test('classic style band screen', async () => {
+    await editSettings({ kawaii: false });
+    await page.reload({ waitUntil: 'networkidle0' });
+    await waitHome();
+    expect((await style('.row', 'borderTopWidth')) === '1px', 'rows not flat in classic');
+    await shot('classic-band');
+    await editSettings({ kawaii: true });
+    await page.reload({ waitUntil: 'networkidle0' });
+  });
+
   console.log('layouts');
   for (const name of ['small', 'tiny', 'landscape']) {
-    await test(`${name} (${PHONES[name].width}x${PHONES[name].height}) fits, both tabs`, async () => {
+    await test(`${name} (${PHONES[name].width}x${PHONES[name].height}) fits, all tabs`, async () => {
       await phone(name);
+      await tap('#tabBand'); await sleep(150);
+      await noOverflow();
+      await shot(`band-${name}`);
       await tap('#tabMetro'); await sleep(150);
       await noOverflow(); await inView('#btnMetro');
       await shot(`metronome-${name}`);

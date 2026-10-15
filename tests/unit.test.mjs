@@ -4,6 +4,11 @@ import { yin } from '../js/yin.js';
 import { noteFromFreq, NOTE_NAMES } from '../js/notes.js';
 import { createPitchTracker, median, rms } from '../js/pitch-tracker.js';
 import { tempoName } from '../js/metronome.js';
+import { makeCode, normalizeCode, cleanSong, songMeta, moveItem, LIMITS } from '../js/band.js';
+import { readFileSync } from 'node:fs';
+import { webcrypto } from 'node:crypto';
+
+if (!globalThis.crypto) globalThis.crypto = webcrypto; // older Node has it only under node:crypto
 
 let failed = 0;
 function test(name, fn) {
@@ -87,6 +92,52 @@ console.log('metronome');
 test('tempo names', () => {
   assert.equal(tempoName(40), 'Largo'); assert.equal(tempoName(100), 'Andante');
   assert.equal(tempoName(120), 'Allegro'); assert.equal(tempoName(250), 'Prestissimo');
+});
+
+console.log('band');
+test('band codes look like ABCD-2345 and avoid look-alike characters', () => {
+  for (let i = 0; i < 200; i++) {
+    const c = makeCode();
+    assert.match(c, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    assert.ok(!/[01OIL]/.test(c), c);
+  }
+  assert.equal(makeCode(() => 0), 'AAAA-AAAA');
+});
+test('typed codes are tidied up, wrong lengths rejected', () => {
+  assert.equal(normalizeCode(' abcd 2345 '), 'ABCD-2345');
+  assert.equal(normalizeCode('abcd-2345'), 'ABCD-2345');
+  assert.equal(normalizeCode('ABCD234'), null);
+  assert.equal(normalizeCode(null), null);
+});
+test('songs are cleaned to what the security rules accept', () => {
+  assert.equal(cleanSong({ title: '   ' }), null);
+  assert.deepEqual(cleanSong({ title: '  Wonder   wall ', artist: 'Oasis', key: 'F#m', bpm: '87.4', beats: '', notes: ' capo 2 ' }),
+    { title: 'Wonder wall', artist: 'Oasis', key: 'F#m', bpm: 87, beats: null, notes: 'capo 2' });
+  const s = cleanSong({ title: 'x'.repeat(200), bpm: '999', beats: '0' });
+  assert.equal(s.title.length, LIMITS.title);
+  assert.equal(s.bpm, 250); assert.equal(s.beats, 1);
+  assert.equal(cleanSong({ title: 'a', bpm: 'fast' }).bpm, null);
+  assert.ok(Number.isInteger(cleanSong({ title: 'a', bpm: '120' }).bpm), 'bpm must be an integer for the rules');
+});
+test('song details line', () => {
+  assert.equal(songMeta({ artist: 'Oasis', key: 'Am', bpm: 120, beats: 4 }), 'Oasis · Am · 120 BPM');
+  assert.equal(songMeta({ artist: '', key: '', bpm: null, beats: 3 }), '3/4');
+  assert.equal(songMeta({ artist: '', key: '', bpm: null, beats: null }), '');
+});
+test('moving setlist songs', () => {
+  assert.deepEqual(moveItem(['a', 'b', 'c'], 0, 1), ['b', 'a', 'c']);
+  assert.deepEqual(moveItem(['a', 'b', 'c'], 2, 1), ['a', 'c', 'b']);
+  assert.deepEqual(moveItem(['a', 'b'], 0, -1), ['a', 'b'], 'out of range is a no-op');
+});
+test('band code rule in firestore.rules matches the codes we make', () => {
+  const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+  const m = rules.match(/b\.matches\('([^']+)'\)/);
+  assert.ok(m, 'code pattern not found in rules');
+  assert.match(makeCode(), new RegExp(m[1]));
+  // each limit in js/band.js appears in the rules
+  for (const [field, max] of [['title', LIMITS.title], ['artist', LIMITS.artist], ['key', LIMITS.key], ['notes', LIMITS.notes]]) {
+    assert.ok(rules.includes(`text(d.${field}, ${field === 'title' ? 1 : 0}, ${max})`), field + ' limit differs from the rules');
+  }
 });
 
 if (failed) { console.log(`\n${failed} unit test(s) failed`); process.exit(1); }

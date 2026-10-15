@@ -102,5 +102,11 @@ export function createMetronomePanel() {
   sync();
   pose(null);
 
-  return { stop, get running() { return metro.running; } };
+  /** Set tempo and/or beats from outside (a song from the band's list); null leaves it as is. */
+  function load(bpm, beats) {
+    if (bpm) changeBpm(bpm);
+    if (beats) changeBeats(beats);
+  }
+
+  return { stop, load, get running() { return metro.running; } };
 }

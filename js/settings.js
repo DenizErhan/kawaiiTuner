@@ -14,13 +14,14 @@ export const A4_MIN = 400, A4_MAX = 480, A4_DEFAULT = 440;
 export const BPM_MIN = 30, BPM_MAX = 250, BPM_DEFAULT = 100;
 export const BEATS_MIN = 1, BEATS_MAX = 12;
 const DEFAULT_THEME = 'midnight';
+const MODES = ['tuner', 'metro', 'band'];
 
 const KEY = 'tuner.settings.v1';
 const HEX = /^#[0-9a-f]{6}$/i;
 
 function pickTheme(t) { const o = { deco: t.deco }; COLOR_KEYS.forEach(([k]) => { o[k] = t[k]; }); return o; }
 function defaults() {
-  return { theme: DEFAULT_THEME, custom: pickTheme(THEMES[DEFAULT_THEME]), a4: A4_DEFAULT, notation: 'en', mode: 'tuner', bpm: BPM_DEFAULT, beats: 4, kawaii: true };
+  return { theme: DEFAULT_THEME, custom: pickTheme(THEMES[DEFAULT_THEME]), a4: A4_DEFAULT, notation: 'en', mode: 'tuner', bpm: BPM_DEFAULT, beats: 4, kawaii: true, me: '', band: null };
 }
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampA4 = (v) => clamp(v, A4_MIN, A4_MAX);
@@ -38,10 +39,12 @@ function load() {
       }
       if (Number.isFinite(raw.a4)) s.a4 = clampA4(Math.round(raw.a4));
       if (raw.notation === 'en' || raw.notation === 'sol') s.notation = raw.notation;
-      if (raw.mode === 'tuner' || raw.mode === 'metro') s.mode = raw.mode;
+      if (MODES.includes(raw.mode)) s.mode = raw.mode;
       if (typeof raw.kawaii === 'boolean') s.kawaii = raw.kawaii;
       if (Number.isFinite(raw.bpm)) s.bpm = clamp(Math.round(raw.bpm), BPM_MIN, BPM_MAX);
       if (Number.isFinite(raw.beats)) s.beats = clamp(Math.round(raw.beats), BEATS_MIN, BEATS_MAX);
+      if (typeof raw.me === 'string') s.me = raw.me;
+      if (raw.band && typeof raw.band.code === 'string') s.band = { code: raw.band.code };
     }
   } catch (e) { /* storage unavailable or corrupt: use defaults */ }
   return s;
@@ -51,10 +54,10 @@ function load() {
 export const settings = load();
 
 export function save() { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } }
-// Reset the look and tuner settings; keep the open tab and the metronome tempo.
+// Reset the look and tuner settings; keep the open tab, the metronome tempo and the band.
 export function reset() {
-  const { mode, bpm, beats } = settings;
-  Object.assign(settings, defaults(), { mode, bpm, beats });
+  const { mode, bpm, beats, me, band } = settings;
+  Object.assign(settings, defaults(), { mode, bpm, beats, me, band });
   save();
 }
 
@@ -84,3 +87,6 @@ export function themeLabel(id) {
 }
 export function setBpm(v) { settings.bpm = clamp(Math.round(v), BPM_MIN, BPM_MAX); save(); }
 export function setBeats(v) { settings.beats = clamp(v, BEATS_MIN, BEATS_MAX); save(); }
+/** Your display name in bands, and the band this phone is in ({ code } or null). */
+export function setMe(v) { settings.me = v; save(); }
+export function setBand(code) { settings.band = code ? { code } : null; save(); }

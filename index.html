@@ -22,7 +22,8 @@
   <header class="top">
     <div class="tabs" role="tablist" aria-label="Mode">
       <button role="tab" id="tabTuner" aria-controls="viewTuner" aria-selected="true">Tuner</button>
-      <button role="tab" id="tabMetro" aria-controls="viewMetro" aria-selected="false" tabindex="-1">Metronome</button>
+      <button role="tab" id="tabMetro" aria-controls="viewMetro" aria-selected="false" tabindex="-1">Metro<span class="tab-long">nome</span></button>
+      <button role="tab" id="tabBand" aria-controls="viewBand" aria-selected="false" tabindex="-1">Band</button>
     </div>
     <button class="icon-btn" id="btnSettings" aria-label="Settings" aria-expanded="false" aria-controls="sheet">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
@@ -59,6 +60,12 @@
   </section>
 
   <section class="view view-metro" id="viewMetro" role="tabpanel" aria-labelledby="tabMetro" data-run="off" hidden>
+    <div class="cue" id="cue" hidden>
+      <button class="cue-btn" id="cuePrev" aria-label="Previous song">&lsaquo;</button>
+      <div class="cue-info"><small id="cuePos"></small><strong id="cueTitle"></strong></div>
+      <button class="cue-btn" id="cueNext" aria-label="Next song">&rsaquo;</button>
+      <button class="cue-btn cue-x" id="cueClose" aria-label="Close song">&times;</button>
+    </div>
     <div class="beat-dots" id="beatDots" aria-hidden="true"></div>
     <svg class="figure maneki" id="maneki" viewBox="0 0 240 250" role="img" aria-label="Lucky cat keeping the beat"></svg>
     <svg class="figure pendulum" id="pendulum" viewBox="0 0 240 250" role="img" aria-label="Metronome pendulum keeping the beat"></svg>
@@ -91,6 +98,63 @@
     </svg>
     <span id="btnMetroLabel">Start</span>
   </button>
+  </section>
+  <section class="view view-band" id="viewBand" role="tabpanel" aria-labelledby="tabBand" hidden>
+    <p class="band-msg" id="bandMsg" role="status" aria-live="polite"></p>
+
+    <div class="band-setup" id="bandSetup" hidden>
+      <h2 class="band-title" id="setupTitle">Play together</h2>
+      <p class="band-lead">Share songs and setlists with your band. No accounts: one of you starts a band and the others join with its code.</p>
+      <label class="field"><span>Your name</span><input id="meName" maxlength="30" autocomplete="nickname" enterkeyhint="next" placeholder="How the band sees you"></label>
+      <form class="card band-form" id="formJoin">
+        <h3>Join a band</h3>
+        <label class="field"><span>Band code</span><input id="joinCode" maxlength="9" placeholder="ABCD-2345" autocapitalize="characters" autocomplete="off" spellcheck="false" enterkeyhint="go"></label>
+        <button class="go go-sm">Join</button>
+      </form>
+      <form class="card band-form" id="formCreate">
+        <h3>Start a new band</h3>
+        <label class="field"><span>Band name</span><input id="bandName" maxlength="40" autocomplete="off" enterkeyhint="go"></label>
+        <button class="go go-sm">Start band</button>
+      </form>
+    </div>
+
+    <div class="band-home" id="bandHome" hidden>
+      <div class="band-head">
+        <div class="band-head-text">
+          <h2 class="band-title" id="bandTitle"></h2>
+          <p class="band-members" id="bandMembers"></p>
+        </div>
+        <button class="code-chip" id="btnShare" aria-label="Share the band code"><small>Code</small><span id="bandCode"></span></button>
+      </div>
+
+      <div class="seg" id="bandTabs">
+        <button data-v="songs" aria-pressed="true">Songs</button>
+        <button data-v="setlists" aria-pressed="false">Setlists</button>
+      </div>
+
+      <div class="pane" id="paneSongs">
+        <button class="add-btn" id="btnAddSong">+ Add song</button>
+        <ul class="list" id="songList"></ul>
+      </div>
+
+      <div class="pane" id="paneSetlists" hidden>
+        <button class="add-btn" id="btnAddSetlist">+ New setlist</button>
+        <ul class="list" id="setlistList"></ul>
+      </div>
+
+      <div class="pane" id="paneSetlist" hidden>
+        <div class="detail-head">
+          <button class="icon-btn" id="btnBack" aria-label="Back to setlists">&lsaquo;</button>
+          <h3 id="setlistTitle"></h3>
+          <button class="icon-btn" id="btnSetlistMenu" aria-label="Rename or delete setlist">&hellip;</button>
+        </div>
+        <button class="go go-sm" id="btnPlaySetlist">Play setlist</button>
+        <ol class="list" id="setlistSongs"></ol>
+        <button class="add-btn" id="btnPickSongs">+ Add songs</button>
+      </div>
+
+      <button class="ghost" id="btnLeave">Leave band</button>
+    </div>
   </section>
 </main>
 
@@ -138,6 +202,45 @@
   <button class="ghost" id="btnReset">Reset to defaults</button>
   <p class="version" id="version"></p>
 </aside>
+
+<dialog class="pop" id="songDialog" aria-labelledby="songDialogTitle">
+  <form method="dialog" id="songForm">
+    <h2 id="songDialogTitle">Add song</h2>
+    <label class="field"><span>Title</span><input name="title" maxlength="80" required autocomplete="off"></label>
+    <label class="field"><span>Artist</span><input name="artist" maxlength="80" autocomplete="off"></label>
+    <div class="field-row">
+      <label class="field"><span>Key</span><input name="key" maxlength="12" placeholder="Am" autocomplete="off"></label>
+      <label class="field"><span>BPM</span><input name="bpm" type="number" inputmode="numeric" min="30" max="250" placeholder="120"></label>
+      <label class="field"><span>Beats</span><input name="beats" type="number" inputmode="numeric" min="1" max="12" placeholder="4"></label>
+    </div>
+    <button type="button" class="link-btn" id="btnUseTempo"></button>
+    <label class="field"><span>Notes</span><textarea name="notes" maxlength="300" rows="2" placeholder="Capo 2, starts with drums…"></textarea></label>
+    <div class="pop-actions">
+      <button type="button" class="ghost danger" id="btnDeleteSong">Delete</button>
+      <button type="button" class="ghost" value="cancel" id="btnCancelSong">Cancel</button>
+      <button class="go go-sm" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pop" id="nameDialog" aria-labelledby="nameDialogTitle">
+  <form method="dialog" id="nameForm">
+    <h2 id="nameDialogTitle">New setlist</h2>
+    <label class="field"><span>Name</span><input name="name" maxlength="60" required autocomplete="off" placeholder="Friday at the pub"></label>
+    <div class="pop-actions">
+      <button type="button" class="ghost danger" id="btnDeleteSetlist">Delete setlist</button>
+      <button type="button" class="ghost" id="btnCancelName">Cancel</button>
+      <button class="go go-sm" value="save">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="pop" id="pickDialog" aria-labelledby="pickDialogTitle">
+  <h2 id="pickDialogTitle">Add songs</h2>
+  <p class="pop-hint">Tap songs to add them to the end of the setlist.</p>
+  <ul class="list pick-list" id="pickList"></ul>
+  <div class="pop-actions"><button class="go go-sm" id="btnPickDone">Done</button></div>
+</dialog>
 
 <script type="module" src="js/main.js"></script>
 </body>

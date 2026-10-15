@@ -1,14 +1,25 @@
 /* Service worker: network first, so a deploy shows up on the next load
    instead of mixing new HTML with cached old CSS/JS (GitHub Pages lets
-   browsers reuse files for 10 minutes). Falls back to the saved copy offline. */
+   browsers reuse files for 10 minutes). Falls back to the saved copy offline,
+   so the tuner, metronome and band setlists all work without a signal. */
 
 const CACHE = 'tuner-v1';
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
+// The Firebase SDK (band tab) has the version in its URL, so a saved copy never goes stale.
+const SDK = 'https://www.gstatic.com/firebasejs/';
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
+  if (req.method === 'GET' && req.url.startsWith(SDK)) {
+    e.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => {
+      if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); }
+      return res;
+    })));
+    return;
+  }
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   e.respondWith((async () => {
     try {
