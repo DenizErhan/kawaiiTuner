@@ -1,0 +1,79 @@
+/* Classic style (Kawaii-fy off): system font, no cats or patterns, flatter shapes.
+   The JS builds both versions of each figure; these rules show one. */
+:root[data-style="classic"] {
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+:root[data-style="classic"] body::before,
+:root[data-style="classic"] .kawaii-only,
+:root[data-style="classic"] .colors label[data-key="cat"],
+:root[data-style="classic"] .gauge .cat,
+:root[data-style="classic"] .gauge .needle-tip,
+:root[data-style="classic"] .paw,
+:root[data-style="classic"] .name-wrap::before,
+:root[data-style="classic"] .name-wrap::after,
+:root[data-style="classic"] .maneki { display: none; }
+:root[data-style="classic"] .gauge .hub,
+:root[data-style="classic"] .pendulum { display: block; }
+:root[data-style="classic"] .app.intune .name { animation: none; }
+
+/* flatter, quieter shapes */
+:root[data-style="classic"] .card,
+:root[data-style="classic"] .icon-btn,
+:root[data-style="classic"] .chip,
+:root[data-style="classic"] .seg,
+:root[data-style="classic"] .colors label,
+:root[data-style="classic"] .stepper button,
+:root[data-style="classic"] .mini-stepper,
+:root[data-style="classic"] .tap,
+:root[data-style="classic"] .round-btn,
+:root[data-style="classic"] .switch-row,
+:root[data-style="classic"] .ghost,
+:root[data-style="classic"] .cue,
+:root[data-style="classic"] .row,
+:root[data-style="classic"] .add-btn,
+:root[data-style="classic"] .field input,
+:root[data-style="classic"] .field textarea,
+:root[data-style="classic"] .pop,
+:root[data-style="classic"] .sheet { border-width: 1px; }
+:root[data-style="classic"] .row,
+:root[data-style="classic"] .cue,
+:root[data-style="classic"] .add-btn,
+:root[data-style="classic"] .field input,
+:root[data-style="classic"] .field textarea { border-radius: 12px; box-shadow: none; }
+:root[data-style="classic"] .pop { border-radius: 20px 20px 0 0; }
+:root[data-style="classic"] .card { border-radius: 16px; box-shadow: none; }
+:root[data-style="classic"] .icon-btn { border-radius: 12px; }
+:root[data-style="classic"] .acc { border: 0; letter-spacing: .16em; }
+:root[data-style="classic"] .chip,
+:root[data-style="classic"] .colors label,
+:root[data-style="classic"] .stepper button,
+:root[data-style="classic"] .seg,
+:root[data-style="classic"] .ghost,
+:root[data-style="classic"] .switch-row,
+:root[data-style="classic"] .mini-stepper,
+:root[data-style="classic"] .tap { border-radius: 12px; }
+:root[data-style="classic"] .tap,
+:root[data-style="classic"] .round-btn { box-shadow: none; }
+:root[data-style="classic"] .tap:active,
+:root[data-style="classic"] .round-btn:active { transform: none; background: var(--surface2); box-shadow: none; }
+:root[data-style="classic"] .go,
+:root[data-style="classic"] .app[data-run="on"] .view-tuner .go,
+:root[data-style="classic"] .view-metro[data-run="on"] .go { border-radius: 16px; box-shadow: none; }
+:root[data-style="classic"] .go:active { transform: scale(.98); box-shadow: none; }
+:root[data-style="classic"] .sheet { border-radius: 20px 20px 0 0; }
+:root[data-style="classic"] .gauge .arc { stroke-width: 3; }
+:root[data-style="classic"] .gauge .zone { stroke-width: 12; stroke-linecap: butt; }
+:root[data-style="classic"] .gauge .tick { stroke-width: 1.5; }
+:root[data-style="classic"] .gauge .needle-line { stroke-width: 3.5; }
+
+:root[data-style="classic"] .poll,
+:root[data-style="classic"] .day,
+:root[data-style="classic"] .opt,
+:root[data-style="classic"] .quick button,
+:root[data-style="classic"] .range input,
+:root[data-style="classic"] .opt-input input,
+:root[data-style="classic"] .home-card,
+:root[data-style="classic"] .decided,
+:root[data-style="classic"] .menu-item { border-width: 1px; border-radius: 12px; }
+:root[data-style="classic"] .drawer { border-width: 1px; border-radius: 0 20px 20px 0; }
+:root[data-style="classic"] .home-card { box-shadow: none; }

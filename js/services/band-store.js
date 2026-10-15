@@ -4,7 +4,8 @@
    listed in a band's members is what lets it read and write that band
    (see firestore.rules). The local cache keeps songs and setlists readable
    offline, and changes made offline are sent when the phone is back online. */
-import { makeCode } from './band.js';
+import { makeCode } from '../core/band.js';
+import { t } from '../i18n/i18n.js';
 
 const SDK = 'https://www.gstatic.com/firebasejs/12.19.0/';
 // Public by design: the security rules decide who can read or change what.
@@ -24,10 +25,10 @@ export class BandError extends Error {}
 export function friendlyError(e) {
   if (e instanceof BandError) return e.message;
   const code = (e && e.code) || '';
-  if (/unavailable|offline|network/.test(code + (e && e.message))) return "Can't reach the band server. Check your internet and try again.";
-  if (/permission-denied/.test(code)) return "That wasn't allowed. Are you still in this band?";
-  if (/admin-restricted|operation-not-allowed/.test(code)) return 'Band sign-in is switched off in Firebase (Authentication > Anonymous).';
-  return 'Something went wrong' + (code ? ' (' + code + ')' : '') + '. Try again.';
+  if (/unavailable|offline|network/.test(code + (e && e.message))) return t('band.errOffline');
+  if (/permission-denied/.test(code)) return t('band.errDenied');
+  if (/admin-restricted|operation-not-allowed/.test(code)) return t('band.errSignIn');
+  return code ? t('band.errOther', { code }) : t('band.errUnknown');
 }
 
 let ready = null;
@@ -69,11 +70,11 @@ function createApi(F, db, uid) {
         await b.commit();
         return code;
       }
-      throw new BandError("Couldn't find a free band code. Try again.");
+      throw new BandError(t('band.noFreeCode'));
     },
 
     async joinBand(code, me) {
-      if (!(await F.getDoc(bandRef(code))).exists()) throw new BandError('No band has that code. Check it with your bandmate.');
+      if (!(await F.getDoc(bandRef(code))).exists()) throw new BandError(t('band.noSuchBand'));
       await F.setDoc(memberRef(code), { name: me, joinedAt: F.serverTimestamp() });
     },
 

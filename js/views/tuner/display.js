@@ -1,4 +1,5 @@
 /* The main readout: note name, cents, frequency, status line, level meter. */
+import { t } from '../../i18n/i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const app = $('app');
@@ -15,7 +16,7 @@ export function setLevel(x) { $('level').style.width = (x * 100).toFixed(0) + '%
 
 export function setRunning(on) {
   app.dataset.run = on ? 'on' : 'off';
-  $('btnGoLabel').textContent = on ? 'Stop' : 'Start';
+  $('btnGoLabel').textContent = t(on ? 'common.stop' : 'common.start');
 }
 
 export function showIdle(running) {
@@ -30,7 +31,7 @@ export function showIdle(running) {
   $('targetVal').textContent = '';
   $('accFlat').classList.remove('on');
   $('accSharp').classList.remove('on');
-  setStatus(running ? 'Listening…' : 'Tap Start, then play a note');
+  setStatus(t(running ? 'tuner.listening' : 'tuner.idle'));
 }
 
 /** note: result of noteFromFreq(); names: the 12 note names to display. */
@@ -47,9 +48,9 @@ export function showPitch(freq, note, names) {
   const r = Math.round(c);
   $('centsVal').textContent = (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r);
   $('hzVal').textContent = freq.toFixed(1);
-  $('targetVal').textContent = 'target ' + note.target.toFixed(1) + ' Hz';
+  $('targetVal').textContent = t('tuner.target', { hz: note.target.toFixed(1) });
   $('accFlat').classList.toggle('on', !inTune && c < 0);
   $('accSharp').classList.toggle('on', !inTune && c > 0);
   const kawaii = document.documentElement.dataset.style !== 'classic';
-  setStatus(inTune ? (kawaii ? 'Purrfect! In tune' : 'In tune') : c < 0 ? 'Flat — tune up' : 'Sharp — tune down');
+  setStatus(t(inTune ? (kawaii ? 'tuner.inTuneKawaii' : 'tuner.inTune') : c < 0 ? 'tuner.tuneUp' : 'tuner.tuneDown'));
 }

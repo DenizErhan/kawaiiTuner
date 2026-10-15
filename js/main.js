@@ -1,49 +1,36 @@
-/* Entry point: sets up the three tabs (tuner, metronome, band) and the settings sheet. */
-import { settings, setMode } from './settings.js';
-import { createTuner } from './tuner.js';
-import { createMetronomePanel } from './metronome-panel.js';
-import { createBandPanel } from './band-panel.js';
-import { initSettingsPanel } from './settings-panel.js';
-import { VERSION } from './version.js';
+/* Entry point: picks the language, applies the theme, builds the frame and
+   the screens, and shows the screen for the address after the #. */
+import { settings, setMode } from './core/settings.js';
+import { setLang, pickLang, getLang, t } from './i18n/i18n.js';
+import { applyTheme } from './ui/theme.js';
+import { createShell } from './app/shell.js';
+import { onRoute, start, go, path } from './app/router.js';
+import { createTunerView } from './views/tuner/tuner-view.js';
+import { createMetronomeView } from './views/metronome/metronome-view.js';
+import { createBandView } from './views/band/band-view.js';
+import { createSettingsSheet } from './views/settings/settings-sheet.js';
 
-const tuner = createTuner();
-const metronome = createMetronomePanel();
-const band = createBandPanel({ metronome, openTab });
-const app = document.getElementById('app');
-const MODES = ['tuner', 'metro', 'band'];
-const TABS = { tuner: 'tabTuner', metro: 'tabMetro', band: 'tabBand' };
-const VIEWS = { tuner: 'viewTuner', metro: 'viewMetro', band: 'viewBand' };
+setLang(pickLang(settings.lang));
+document.documentElement.lang = getLang();
+document.title = t('app.name');
+document.querySelector('meta[name="description"]').setAttribute('content', t('app.description'));
+applyTheme();
 
-function showMode(mode) {
-  // only one runs at a time: the tuner's mic would hear the clicks
-  if (mode !== 'metro') metronome.stop();
-  if (mode !== 'tuner') tuner.stop();
-  app.dataset.mode = mode;
-  MODES.forEach((m) => {
-    const tab = document.getElementById(TABS[m]);
-    tab.setAttribute('aria-selected', String(m === mode));
-    tab.tabIndex = m === mode ? 0 : -1;
-    document.getElementById(VIEWS[m]).hidden = m !== mode;
-  });
-  if (mode === 'band') band.show();
-}
-function openTab(m) { setMode(m); showMode(m); }
+const sheet = createSettingsSheet({ onChange: () => { tuner.rerender(); band.rerender(); } });
+const shell = createShell(document.getElementById('app'), { openSettings: () => sheet.open() });
+const tuner = createTunerView(shell.views);
+const metronome = createMetronomeView(shell.views);
+const band = createBandView(shell.views, { metronome, shell });
+const views = { tuner, metronome, band };
 
-MODES.forEach((m, i) => {
-  const tab = document.getElementById(TABS[m]);
-  tab.addEventListener('click', () => openTab(m));
-  tab.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-    const next = MODES[(i + (e.key === 'ArrowRight' ? 1 : MODES.length - 1)) % MODES.length];
-    openTab(next);
-    document.getElementById(TABS[next]).focus();
-  });
+onRoute((r) => {
+  const view = views[r.view];
+  if (!view) { go(path(settings.mode), { replace: true }); return; } // no or unknown address: the last screen used
+  setMode(view.id);
+  shell.show(view, r);
 });
-
-initSettingsPanel({ onChange: () => { tuner.rerender(); band.rerender(); } });
-if (band.invited) setMode('band'); // opened from an invite link
-showMode(settings.mode);
-document.getElementById('version').textContent = 'Version ' + VERSION;
+if (band.invited) history.replaceState(null, '', path('band')); // opened from an invite link
+start();
 
 // network-first service worker: fresh files after each deploy, works offline
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

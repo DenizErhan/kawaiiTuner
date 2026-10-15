@@ -1,6 +1,6 @@
 # Tuner
 
-A cute tuner, metronome and band organiser for musicians that runs in the browser. Plain HTML/JS, no build step, no dependencies to install (the band tab loads Firebase from Google's CDN).
+A cute tuner, metronome and band organiser for musicians that runs in the browser. Plain HTML/JS, no build step, no dependencies to install (the band screens load Firebase from Google's CDN).
 
 ## Run it
 
@@ -19,7 +19,7 @@ npm install            # once: installs puppeteer-core (dev only, nothing ships 
 npm test               # unit tests + browser tests, must say "all ... passed"
 ```
 
-- `npm run test:unit`: pitch detection, note maths, pitch tracker, tempo names (plain Node).
+- `npm run test:unit`: pitch detection, note maths, pitch tracker, tempo names, band and calendar logic, and that every text the code asks for exists in every language file (plain Node).
 - `npm run test:browser`: opens the app in your installed Chrome as an Android phone (touch, fake microphone that plays a tone), checks every screen is styled, every control works, the metronome keeps time (one beat per 500 ms at 120 BPM), and nothing is cut off at 412x915, 360x640, 320x568 or landscape. Screenshots go to `tests/screenshots/`.
 
 ### On your Android phone, before deploying
@@ -34,7 +34,8 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 
 ## What's in it
 
-- Pitch detection with the YIN algorithm (`js/yin.js`), about 30 Hz to 2 kHz.
+- A ☰ menu (slides in from the left) leads to every screen: Tuner, Metronome, the band's sections, Settings. Each screen has its own address (`#/tuner`, `#/band/polls`, …), so the phone's back button, reloads and links land in the right place. A dot on ☰ means a poll is waiting for your vote.
+- Pitch detection with the YIN algorithm (`js/core/yin.js`), about 30 Hz to 2 kHz.
 - Note name, octave, cents sharp/flat, frequency, target frequency.
 - Needle gauge with a cat on the pivot: asleep when stopped, eyes follow the needle, hops and blushes when you're in tune (within about 5 cents).
 - Two styles, switched with **Kawaii-fy ✨** at the top of Settings (on by default). Classic: plain font, no patterns, plain needle, and a pendulum metronome whose weight slides with the tempo. Kawaii: everything below.
@@ -42,17 +43,18 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 - Made for phones: portrait and landscape layouts, safe areas (notch), no double-tap zoom, swipe the settings sheet down to close, hold +/- to step quickly, screen stays on while tuning, add to home screen (web manifest + icons).
 - Reference pitch A4 (400-480 Hz; double-tap the value to reset to 440).
 - Note names: C D E or Do Re Mi.
-- Metronome (second tab): 30-250 BPM with tempo names, slider and hold-to-repeat +/-, 1-12 beats per bar with an accented first beat, tap tempo. Clicks are scheduled on the Web Audio clock, so timing stays exact. A Maneki Neko beckons on every beat, sways, and jingles its bell on beat 1.
+- Metronome: 30-250 BPM with tempo names, slider and hold-to-repeat +/-, 1-12 beats per bar with an accented first beat, tap tempo. Clicks are scheduled on the Web Audio clock, so timing stays exact. A Maneki Neko beckons on every beat, sways, and jingles its bell on beat 1.
 - Only one mode runs at a time, so the tuner never hears the clicks.
-- Settings saved in the browser (localStorage), including the open tab and the tempo.
+- Settings saved in the browser (localStorage), including the last screen and the tempo.
 
-### Band tab
+### Band
 
 - One person starts a band and gets a code like `K7MP-Q3XA`; the others type it in (or open the invite link from the Share button). No accounts or passwords: each phone signs in anonymously.
 - Shared song pool: title, artist, key, BPM, beats, notes. Changes show up on everyone's phone live.
 - Setlists: pick songs from the pool, put them in order.
 - Tap a song: the metronome takes its tempo and beats. Play a setlist: a bar in the metronome steps through it (‹ ›).
-- Anyone can change their own name, and rename the band.
+- Band home: the latest decision, polls waiting for your vote, this week's overlap, and the song and setlist counts; each card opens its screen.
+- Band menu (⋯ at the top right): the invite code and Share button, members, change your name, rename the band, leave.
 - Plan: everyone adds when they're free (exact times, a week at a time from today); each day shows who overlaps and the best window. One tap turns the week's best times into a "When do we practise?" poll.
 - Polls: any question with your own options, pick one or pick any, results live with names. Whoever asked closes it by tapping the winner.
 - Works offline once it has loaded: songs, setlists, polls and free times are cached on the phone, and edits are sent when it's back online.
@@ -82,7 +84,7 @@ On the phone: open the link, tap Start, allow the microphone. To get an app icon
 4. Band tools: done (bands with join codes, song pool, setlists that drive the metronome, free-time calendar, polls).
 5. Later: wrap for the app stores if it takes off (Google Play about $25 one-time, Apple about $99/year).
 
-## Firebase (band tab)
+## Firebase (band screens)
 
 Project `kawaii-tuner` (console.firebase.google.com). The web config in `js/band-store.js` is public by design; `firestore.rules` is what keeps bands private.
 
@@ -96,42 +98,39 @@ Project `kawaii-tuner` (console.firebase.google.com). The web config in `js/band
 Plain ES modules, loaded by `<script type="module">` (another reason it has to be served, not opened as a file).
 
 ```
-index.html            markup only
-css/styles.css        all styles, background patterns, cat expressions, phone layouts
+index.html            the page shell only; every screen builds its own markup
+css/                  base.css (tokens, shared controls), shell.css (top bar, ☰ menu), one file per
+                      screen (tuner, metronome, settings, band, plan), layout.css (small/sideways
+                      phones), classic.css (the Kawaii-fy-off style)
 manifest.webmanifest  home-screen app info
 sw.js                 service worker: network first (fresh files after a deploy), offline fallback
+js/main.js            entry point: language, theme, shell, screens, routing
 js/version.js         build label shown in Settings; bump per deploy
-scripts/serve.mjs     local dev server (npm run serve)
-tests/                unit.test.mjs (Node) and smoke.test.mjs (headless Chrome)
-icons/                app icons (icon.svg is the source design)
-js/main.js            entry point: the three tabs, settings
-js/tuner.js           tuner mode: mic -> pitch tracker -> gauge + readout
-js/metronome.js       metronome engine: look-ahead click scheduling (pure Web Audio)
-js/metronome-panel.js metronome mode UI: tempo, beats, tap tempo
-js/maneki.js          the lucky cat SVG and its beat-synced pose (kawaii style)
-js/pendulum.js        classic pendulum metronome figure
-js/ui.js              shared touch helpers (hold-to-repeat, double-tap)
-js/yin.js             YIN pitch detector (pure function)
-js/notes.js           frequency -> note, octave, cents (pure)
-js/pitch-tracker.js   noise gate + YIN + median smoothing + hold
-js/mic.js             microphone / Web Audio capture (iOS-safe start)
-js/gauge.js           SVG gauge, needle animation, the cat
-js/display.js         note, cents, frequency, status, level meter
-js/settings.js        themes + settings, localStorage
-js/theme.js           applies theme colors + pattern, mixes derived colors
-js/settings-panel.js  the settings sheet UI
-js/wake-lock.js       keeps the screen on while tuning
-js/band-panel.js      band tab UI: setup, songs, setlists, dialogs, the metronome's setlist bar
-js/plan-panel.js      the band's Plan pane: polls, free-time week, their dialogs
-js/plan.js            dates, time ranges, overlaps, vote counts (pure)
-js/dom.js             small DOM helpers shared by the band panels
-js/band-store.js      all Firebase calls (SDK loaded on first use), anonymous sign-in, offline cache
-js/band.js            band codes, input cleanup, list moves (pure)
+js/app/               router.js (#/addresses, back button), shell.js (top bar + ☰ menu)
+js/i18n/              i18n.js (t(), language choice) and one file per language (en.js)
+js/core/              pure logic, unit-tested in Node: yin, notes, pitch-tracker, metronome
+                      engine, band (codes, input cleanup), plan (dates, overlaps, votes), settings
+js/services/          the outside world: band-store (Firebase), mic, wake-lock
+js/ui/                shared view helpers: html`` templates (escaped), icons, dom, controls, theme
+js/views/tuner/       tuner screen, gauge with its cat, readout
+js/views/metronome/   metronome screen, lucky cat, pendulum
+js/views/band/        band-view (connection, setup, home, band menu) + one module per section:
+                      songs, setlists (with the metronome's setlist bar), polls, calendar
+js/views/settings/    the settings sheet
 firestore.rules       who can read/write what; publish it in the Firebase console
-scripts/check-firebase.mjs  live check of the rules + app against the real project
-tests/fake-firebase.mjs     in-memory Firebase for the browser test
+scripts/              serve.mjs (local server), check-firebase.mjs (live check of rules + app)
+tests/                unit.test.mjs (Node), smoke.test.mjs (headless Chrome), fake-firebase.mjs
+icons/                app icons (icon.svg is the source design)
 ```
 
-- `yin.js`, `notes.js`, `pitch-tracker.js` and `metronome.js`'s `tempoName` have no DOM dependencies, so the unit tests import them straight into Node.
+### How things fit together
+
+- **A screen** is a module in `js/views/` that renders its markup with `html```, adds it to the page, and returns `{ id, el, head(route), show(route), hide() }`. `head()` gives the top bar its title, an optional back-arrow target and buttons. Register it in `js/main.js`, add a menu entry in `js/app/shell.js`, and it gets an address `#/<id>`.
+- **Texts** never go in the code: write `t('area.key')` and add the key to `js/i18n/en.js` (and the other language files). The unit tests fail if a key is missing.
+- **A language** is one more file in `js/i18n/` with the same keys (missing ones fall back to English), listed in `LANGS` in `js/i18n/i18n.js`. It then shows up under Settings > Language.
+- **Pop-ups** (menu, settings, band dialogs) are native `<dialog>`s: Esc and the phone's back button close them, and focus stays inside.
+- **Templates** escape everything put into them, so band names and song titles can't inject markup.
+
+- Everything in `js/core/` and `js/i18n/` has no DOM dependencies, so the unit tests import it straight into Node.
 - The app itself stays dependency-free; `puppeteer-core` is only for the tests.
 - Why the service worker: GitHub Pages lets browsers reuse files for 10 minutes, so right after a deploy a phone could load new HTML with old CSS/JS (unstyled, dead buttons). `sw.js` always asks the server first.

@@ -1,15 +1,20 @@
 /* Unit tests for the pure modules (no browser needed): `npm run test:unit`. */
 import assert from 'node:assert/strict';
-import { yin } from '../js/yin.js';
-import { noteFromFreq, NOTE_NAMES } from '../js/notes.js';
-import { createPitchTracker, median, rms } from '../js/pitch-tracker.js';
-import { tempoName } from '../js/metronome.js';
-import { makeCode, normalizeCode, cleanSong, songMeta, moveItem, LIMITS } from '../js/band.js';
+import { yin } from '../js/core/yin.js';
+import { noteFromFreq, NOTE_NAMES } from '../js/core/notes.js';
+import { createPitchTracker, median, rms } from '../js/core/pitch-tracker.js';
+import { tempoName } from '../js/core/metronome.js';
+import { makeCode, normalizeCode, cleanSong, songMeta, moveItem, LIMITS } from '../js/core/band.js';
 import {
   PLAN_LIMITS, dayKey, fromKey, addDays, dayLabel, weekLabel, toMin, fmtMin, inputMin, pairs, cleanRanges,
   overlaps, best, suggest, cleanPoll, tally, toggleVote, leader,
-} from '../js/plan.js';
-import { readFileSync } from 'node:fs';
+} from '../js/core/plan.js';
+import { THEMES, COLOR_KEYS, DECOS } from '../js/core/settings.js';
+import { t, setLang, pickLang, ALL } from '../js/i18n/i18n.js';
+import { html } from '../js/ui/html.js';
+import { readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { webcrypto } from 'node:crypto';
 
 if (!globalThis.crypto) globalThis.crypto = webcrypto; // older Node has it only under node:crypto
@@ -220,6 +225,54 @@ test('plan limits match firestore.rules', () => {
   assert.ok(rules.includes(`d.options.size() <= ${PLAN_LIMITS.options}`), 'option count');
   assert.ok(rules.includes(`times.size() <= ${PLAN_LIMITS.ranges * 2}`), 'range count');
   assert.ok(rules.includes(`text(request.resource.data.name, 1, ${LIMITS.band})`), 'band name');
+});
+
+console.log('i18n');
+const jsFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
+  const p = join(dir, d.name);
+  return d.isDirectory() ? jsFiles(p) : p.endsWith('.js') ? [p] : [];
+});
+const JS = fileURLToPath(new URL('../js/', import.meta.url));
+const find = (dict, key) => key.split('.').reduce((o, k) => (o == null ? undefined : o[k]), dict);
+test('every t(\'…\') key in the code exists in every language', () => {
+  const keys = new Set();
+  for (const f of jsFiles(JS).filter((f) => !f.includes('i18n'))) {
+    const src = readFileSync(f, 'utf8');
+    for (const m of src.matchAll(/\bt\(\s*'([a-zA-Z0-9_.]+)'/g)) keys.add(m[1]);
+  }
+  assert.ok(keys.size > 100, 'found only ' + keys.size + ' keys: is the scan broken?');
+  for (const [code, dict] of Object.entries(ALL)) {
+    const missing = [...keys].filter((k) => find(dict, k) === undefined && !k.endsWith('.')); // 'x.' + id: next test
+    assert.ok(!missing.length, code + ' is missing ' + missing.join(', '));
+  }
+});
+test('keys built at runtime (themes, colors, patterns) exist too', () => {
+  for (const [code, dict] of Object.entries(ALL)) {
+    for (const id of Object.keys(THEMES)) {
+      assert.ok(find(dict, 'settings.themes.' + id) && find(dict, 'settings.themesKawaii.' + id), code + ' theme ' + id);
+    }
+    COLOR_KEYS.forEach((k) => assert.ok(find(dict, 'settings.colorNames.' + k), code + ' color ' + k));
+    DECOS.forEach((k) => assert.ok(find(dict, 'settings.decos.' + k), code + ' pattern ' + k));
+    for (const sub of ['polls', 'calendar', 'songs', 'setlists']) assert.ok(find(dict, 'band.home.' + sub) && find(dict, 'nav.' + sub), code + ' ' + sub);
+  }
+});
+test('t() fills in values and plurals, and falls back to English', () => {
+  setLang('en');
+  assert.equal(t('band.you', { name: 'Ali' }), 'Ali (you)');
+  assert.equal(t('band.home.songCount', { n: 1 }), '1 song');
+  assert.equal(t('band.home.songCount', { n: 3 }), '3 songs');
+  assert.equal(t('no.such.key'), 'no.such.key');
+  assert.equal(pickLang(null, ['xx-YY', 'en-GB']), 'en');
+  assert.equal(pickLang('en', []), 'en');
+});
+
+console.log('html');
+test('templates escape what goes into them, but not nested templates', () => {
+  const name = '<b onclick="x">Tom & "Jerry"</b>';
+  assert.equal(String(html`<p title="${name}">${name}</p>`),
+    '<p title="&lt;b onclick=&quot;x&quot;&gt;Tom &amp; &quot;Jerry&quot;&lt;/b&gt;">&lt;b onclick=&quot;x&quot;&gt;Tom &amp; &quot;Jerry&quot;&lt;/b&gt;</p>');
+  assert.equal(String(html`<ul>${['a', 'b'].map((x) => html`<li>${x}</li>`)}</ul>`), '<ul><li>a</li><li>b</li></ul>');
+  assert.equal(String(html`<i>${null}${false}${0}</i>`), '<i>0</i>');
 });
 
 if (failed) { console.log(`\n${failed} unit test(s) failed`); process.exit(1); }

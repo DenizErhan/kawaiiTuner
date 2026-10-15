@@ -1,0 +1,34 @@
+/* The frame around every screen: the top bar and the ☰ menu (a modal <dialog>
+   sliding in from the left). */
+.top { display: flex; align-items: center; gap: 12px; height: 48px; flex: none; }
+.top-title { flex: 1; min-width: 0; margin: 0; font-size: 20px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.top-actions { display: flex; gap: 8px; }
+.top-actions:empty { display: none; }
+.menu-btn { position: relative; }
+.dot { position: absolute; top: 6px; right: 6px; width: 11px; height: 11px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--surface); }
+.views { flex: 1; display: flex; flex-direction: column; }
+
+.drawer {
+  margin: 0; inset: 0 auto 0 0; width: min(300px, 84vw); height: 100%; max-width: none; max-height: none;
+  padding: max(14px, env(safe-area-inset-top)) 12px max(16px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  overflow-y: auto; overscroll-behavior: contain;
+  color: var(--text); background: var(--surface); border: 2px solid var(--line); border-left: 0; border-radius: 0 28px 28px 0;
+}
+.drawer[open] { display: flex; flex-direction: column; animation: slide-in .25s cubic-bezier(.2,.8,.2,1); }
+.drawer::backdrop { background: rgba(0,0,0,.5); }
+.drawer-head { display: flex; align-items: center; gap: 12px; padding: 0 0 14px 6px; }
+.drawer-head img { border-radius: 12px; }
+.drawer-head strong { flex: 1; font-size: 20px; }
+.drawer-nav { display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 50px; padding: 0 14px;
+  border: 0; border-radius: 16px; background: transparent; color: var(--text);
+  font-size: 16px; font-weight: 700; text-decoration: none; text-align: left;
+}
+.nav-item span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-item:active { background: var(--surface2); }
+.nav-item[aria-current="page"] { background: var(--accent); color: var(--bg); }
+.nav-item[aria-current="page"] .count { background: var(--bg); color: var(--accent); }
+.nav-label { margin: 16px 14px 6px; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drawer hr { width: 100%; margin: 12px 0; border: 0; border-top: 2px solid var(--line); }
+@keyframes slide-in { from { transform: translateX(-100%); } to { transform: none; } }

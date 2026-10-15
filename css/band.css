@@ -1,0 +1,57 @@
+/* The band screens: setup, home, songs, setlists, and the band menu. */
+.view-band { width: 100%; max-width: 560px; margin: 0 auto; padding-top: 6px; }
+.band-msg { min-height: 20px; margin: 6px 0; font-size: 14px; font-weight: 600; color: var(--muted); text-align: center; }
+.band-msg:empty { min-height: 0; margin: 0; }
+.band-msg.err { color: var(--accent); }
+.band-title { margin: 8px 0 4px; font-size: 26px; font-weight: 800; line-height: 1.15; overflow-wrap: anywhere; }
+.band-lead { margin: 0 0 16px; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.band-form { margin-top: 14px; min-height: 0; gap: 10px; }
+.band-form h3 { margin: 0; font-size: 17px; }
+#joinCode { text-transform: uppercase; letter-spacing: .12em; font-weight: 800; }
+.band-members { margin: 2px 0 14px; font-size: 14px; color: var(--muted); line-height: 1.4; }
+#paneSetlist .add-btn { margin-top: 12px; }
+#btnPlaySetlist { margin-top: 0; }
+.pick-list .row-main { position: relative; padding-right: 44px; }
+.pick-list .row-main::after { content: ""; position: absolute; right: 12px; top: 50%; width: 22px; height: 22px; margin-top: -11px; border: 2px solid var(--line); border-radius: 50%; }
+.pick-list .row-main[aria-pressed="true"]::after { content: "\2713"; display: grid; place-items: center; background: var(--accent); border-color: var(--accent); color: var(--bg); font-size: 14px; font-weight: 800; }
+
+.band-screen, .band-screens { display: flex; flex-direction: column; }
+a.row-main { color: inherit; text-decoration: none; }
+.row-go { flex: none; display: grid; padding-right: 10px; color: var(--muted); }
+
+/* band home */
+.decided {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding: 12px 14px;
+  color: var(--text); background: var(--surface); border: 2px solid var(--good); border-radius: 18px; text-decoration: none;
+}
+.decided .ico { color: var(--good); }
+.decided > span { display: flex; flex-direction: column; min-width: 0; }
+.decided small { font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--good); overflow-wrap: anywhere; }
+.decided strong { font-size: 17px; overflow-wrap: anywhere; }
+.home-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.home-card {
+  display: flex; align-items: center; gap: 14px; min-height: 74px; padding: 12px 14px;
+  color: var(--text); background: var(--surface); border: 2px solid var(--line); border-radius: 20px;
+  box-shadow: 0 4px 0 var(--line); text-decoration: none; transition: transform .1s, box-shadow .1s;
+}
+.home-card:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--line); }
+.home-ico { width: 44px; height: 44px; flex: none; display: grid; place-items: center; border-radius: 14px; background: var(--bg); color: var(--accent); }
+.home-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.home-text strong { font-size: 17px; }
+.home-text small { font-size: 14px; color: var(--muted); line-height: 1.3; }
+.home-card > .ico { color: var(--muted); }
+
+/* band menu */
+.invite { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-bottom: 20px; padding: 14px; border: 2px dashed var(--accent); border-radius: 20px; text-align: center; }
+.invite-code { font-size: 30px; font-weight: 800; letter-spacing: .08em; font-variant-numeric: tabular-nums; user-select: text; -webkit-user-select: text; }
+.invite .pop-hint { margin: 0 0 8px; }
+.invite .go { width: 100%; }
+.menu-members { margin: 0 0 18px; font-size: 15px; line-height: 1.45; }
+.menu-list { display: flex; flex-direction: column; gap: 8px; }
+.menu-item {
+  display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 14px;
+  border: 2px solid var(--line); border-radius: 16px; background: transparent; font-size: 16px; font-weight: 700; text-align: left;
+}
+.menu-item:active { background: var(--surface2); }
+.menu-item.danger { color: var(--accent); }
+.pop-actions .menu-done { flex: 1; }

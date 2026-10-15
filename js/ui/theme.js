@@ -1,6 +1,6 @@
 /* Pushes the current theme into CSS custom properties. Derived colors are
    mixed here rather than with CSS color-mix(), which older iOS lacks. */
-import { COLOR_KEYS, currentTheme, settings } from './settings.js';
+import { COLOR_KEYS, currentTheme, settings } from '../core/settings.js';
 
 function rgb(hex) { const n = parseInt(hex.slice(1), 16); return [n >> 16, (n >> 8) & 255, n & 255]; }
 /** a weighted by t, b by 1 - t */
@@ -12,7 +12,7 @@ function mix(a, b, t) {
 export function applyTheme() {
   const c = currentTheme();
   const root = document.documentElement;
-  COLOR_KEYS.forEach(([k]) => root.style.setProperty('--' + k, c[k]));
+  COLOR_KEYS.forEach((k) => root.style.setProperty('--' + k, c[k]));
   root.style.setProperty('--muted', mix(c.text, c.bg, 0.52));
   root.style.setProperty('--line', mix(c.text, c.bg, 0.14));
   root.style.setProperty('--surface2', mix(c.text, c.surface, 0.08));

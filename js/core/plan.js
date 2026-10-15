@@ -3,6 +3,7 @@
    Limits match firestore.rules. Times are minutes since midnight; 1440 is
    midnight at the end of the day. */
 import { cleanText } from './band.js';
+import { t } from '../i18n/i18n.js';
 
 export const PLAN_LIMITS = { ranges: 8, question: 100, option: 60, options: 10 };
 export const DAY = 1440;
@@ -19,14 +20,12 @@ export function fromKey(k) {
 }
 export const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
 
-// spelled out rather than toLocaleDateString, whose punctuation differs between phones
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const month = (d) => MONTHS[d.getMonth()];
+// names from the language file rather than toLocaleDateString, whose punctuation differs between phones
+const month = (d) => t('date.months')[d.getMonth()];
 /** "Sat 18 Oct" */
 export function dayLabel(k) {
   const d = fromKey(k);
-  return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + month(d);
+  return t('date.days')[d.getDay()] + ' ' + d.getDate() + ' ' + month(d);
 }
 /** The 7 days starting at `first`: "15–21 Oct", or "29 Oct – 4 Nov". */
 export function weekLabel(first) {

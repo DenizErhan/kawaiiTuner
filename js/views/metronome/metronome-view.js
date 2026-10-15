@@ -1,17 +1,59 @@
-/* The metronome mode: tempo controls, beat dots, tap tempo, and the figure that
-   keeps the beat (lucky cat in kawaii style, pendulum in classic; CSS shows one). */
-import { settings, setBpm, setBeats, BPM_MIN, BPM_MAX, BPM_DEFAULT, BEATS_MIN, BEATS_MAX } from './settings.js';
-import { createMetronome, tempoName } from './metronome.js';
+/* The metronome screen: tempo controls, beat dots, tap tempo, and the figure that
+   keeps the beat (lucky cat in kawaii style, pendulum in classic; CSS shows one).
+   The bar on top (#cue) belongs to the band's setlists, which fill it in. */
+import { settings, setBpm, setBeats, BPM_MIN, BPM_MAX, BPM_DEFAULT, BEATS_MIN, BEATS_MAX } from '../../core/settings.js';
+import { createMetronome, tempoName } from '../../core/metronome.js';
+import { requestWakeLock, releaseWakeLock } from '../../services/wake-lock.js';
+import { holdToRepeat, onDoubleTap } from '../../ui/controls.js';
+import { t } from '../../i18n/i18n.js';
+import { html, render } from '../../ui/html.js';
+import { PAW, icon } from '../../ui/icons.js';
+import { $ } from '../../ui/dom.js';
 import { createManeki } from './maneki.js';
 import { createPendulum } from './pendulum.js';
-import { requestWakeLock, releaseWakeLock } from './wake-lock.js';
-import { holdToRepeat, onDoubleTap } from './ui.js';
 
-const $ = (id) => document.getElementById(id);
 const TAP_RESET_MS = 2000; // a pause this long starts a new tap-tempo measurement
 
-export function createMetronomePanel() {
-  const view = $('viewMetro');
+const template = () => html`
+  <section class="view view-metro" id="viewMetro" data-run="off" hidden>
+    <div class="cue" id="cue" hidden>
+      <button class="cue-btn" id="cuePrev" aria-label="${t('metronome.prevSong')}">${icon('back')}</button>
+      <div class="cue-info"><small id="cuePos"></small><strong id="cueTitle"></strong></div>
+      <button class="cue-btn" id="cueNext" aria-label="${t('metronome.nextSong')}">${icon('next')}</button>
+      <button class="cue-btn cue-x" id="cueClose" aria-label="${t('metronome.closeSong')}">${icon('close', 20)}</button>
+    </div>
+    <div class="beat-dots" id="beatDots" aria-hidden="true"></div>
+    <svg class="figure maneki" id="maneki" viewBox="0 0 240 250" role="img" aria-label="${t('metronome.cat')}"></svg>
+    <svg class="figure pendulum" id="pendulum" viewBox="0 0 240 250" role="img" aria-label="${t('metronome.pendulum')}"></svg>
+
+    <div class="tempo">
+      <button class="round-btn" id="bpmMinus" aria-label="${t('metronome.slower')}">&minus;</button>
+      <div class="bpm">
+        <output id="bpmVal" aria-live="polite"></output>
+        <span class="bpm-unit">${t('metronome.bpm')} · <span id="tempoName"></span></span>
+      </div>
+      <button class="round-btn" id="bpmPlus" aria-label="${t('metronome.faster')}">+</button>
+    </div>
+    <input type="range" class="slider" id="bpmSlider" step="1" aria-label="${t('metronome.slider')}">
+
+    <div class="metro-row">
+      <div class="mini-stepper">
+        <span class="lbl">${t('metronome.beats')}</span>
+        <button id="beatsMinus" aria-label="${t('metronome.fewerBeats')}">&minus;</button>
+        <output id="beatsVal"></output>
+        <button id="beatsPlus" aria-label="${t('metronome.moreBeats')}">+</button>
+      </div>
+      <button class="tap" id="btnTap"><span class="tap-short">${t('metronome.tap')}</span><span class="tap-long">${t('metronome.tapTempo')}</span></button>
+    </div>
+
+    <div class="spacer"></div>
+    <button class="go" id="btnMetro">${PAW}<span id="btnMetroLabel">${t('common.start')}</span></button>
+  </section>`;
+
+/** Mounts the metronome screen into parent. */
+export function createMetronomeView(parent) {
+  const view = render(template());
+  parent.appendChild(view);
   const figures = [createManeki($('maneki')), createPendulum($('pendulum'), { minBpm: BPM_MIN, maxBpm: BPM_MAX })];
   const pose = (pos) => figures.forEach((f) => f.setPose(pos, settings.bpm));
   const metro = createMetronome({ bpm: settings.bpm, beats: settings.beats, onBeat });
@@ -53,7 +95,7 @@ export function createMetronomePanel() {
   function start() {
     metro.start();
     view.dataset.run = 'on';
-    $('btnMetroLabel').textContent = 'Stop';
+    $('btnMetroLabel').textContent = t('common.stop');
     requestWakeLock();
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(loop);
@@ -63,7 +105,7 @@ export function createMetronomePanel() {
     metro.stop();
     cancelAnimationFrame(raf);
     view.dataset.run = 'off';
-    $('btnMetroLabel').textContent = 'Start';
+    $('btnMetroLabel').textContent = t('common.start');
     $('beatDots').querySelectorAll('i').forEach((d) => d.classList.remove('on'));
     releaseWakeLock();
     pose(null);
@@ -108,5 +150,13 @@ export function createMetronomePanel() {
     if (beats) changeBeats(beats);
   }
 
-  return { stop, load, get running() { return metro.running; } };
+  return {
+    id: 'metronome',
+    el: view,
+    head: () => ({ title: t('nav.metronome') }),
+    show() {},
+    hide: stop,
+    load,
+    get running() { return metro.running; },
+  };
 }

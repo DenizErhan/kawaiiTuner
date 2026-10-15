@@ -1,0 +1,85 @@
+/* The tuner screen: level meter, note, gauge with its cat, readouts. */
+.level { height: 6px; margin-top: 10px; border-radius: 6px; background: var(--line); overflow: hidden; }
+.level i { display: block; height: 100%; width: 0; background: var(--accent); border-radius: 8px; transition: width .06s linear, background .2s; }
+
+/* ---------- note ---------- */
+.note { display: flex; align-items: center; justify-content: center; height: 150px; margin-top: 8px; }
+.acc {
+  width: 64px; padding: 5px 0; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .14em;
+  color: var(--accent); border: 2px solid var(--accent); border-radius: 999px;
+  opacity: .18; transition: opacity .15s, transform .15s;
+}
+.acc.on { opacity: 1; transform: scale(1.06); }
+.name-wrap { position: relative; flex: 1; display: flex; justify-content: center; align-items: flex-start; min-width: 0; }
+.name {
+  font-size: clamp(72px, 26vw, 120px); font-weight: 800; line-height: 1; letter-spacing: -.02em;
+  transition: color .2s, opacity .2s;
+}
+.name.long { font-size: clamp(54px, 18vw, 88px); }
+.oct { font-size: 26px; font-weight: 800; color: var(--muted); margin: 14px 0 0 4px; min-width: 14px; }
+.app[data-pitch="none"] .name { opacity: .25; }
+.app.intune .name { color: var(--good); text-shadow: 0 0 28px var(--glow); animation: boing .45s cubic-bezier(.3,1.6,.5,1); }
+
+/* sparkles around the note when in tune */
+.name-wrap::before, .name-wrap::after {
+  content: '✦'; position: absolute; color: var(--good); opacity: 0; font-size: 22px; pointer-events: none;
+}
+.name-wrap::before { left: 8%; top: 6%; }
+.name-wrap::after { right: 10%; bottom: 4%; font-size: 16px; }
+.app.intune .name-wrap::before, .app.intune .name-wrap::after { animation: twinkle 1.2s ease-in-out infinite; }
+.app.intune .name-wrap::after { animation-delay: .6s; }
+
+@keyframes boing { 0% { transform: scale(.88); } 100% { transform: scale(1); } }
+@keyframes twinkle { 0%, 100% { opacity: 0; transform: scale(.4) rotate(0); } 50% { opacity: 1; transform: scale(1) rotate(25deg); } }
+
+/* ---------- gauge ---------- */
+.gauge { width: 100%; height: auto; display: block; margin: 0 auto; overflow: visible; }
+.gauge .arc { fill: none; stroke: var(--line); stroke-width: 6; stroke-linecap: round; }
+.gauge .zone { fill: none; stroke: var(--good); stroke-width: 14; stroke-linecap: round; opacity: .28; transition: opacity .2s, filter .2s; }
+.gauge .tick { stroke: var(--muted); stroke-width: 2; stroke-linecap: round; opacity: .7; }
+.gauge .tick.zero { stroke: var(--good); stroke-width: 3.5; opacity: 1; }
+.gauge text { fill: var(--muted); font-size: 11px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; font-variant-numeric: tabular-nums; }
+.gauge .needle-line { stroke: var(--accent); stroke-width: 4.5; stroke-linecap: round; transition: stroke .2s; }
+.gauge .needle-tip { fill: var(--accent); transition: fill .2s; }
+.gauge #needle { transition: opacity .25s; }
+.app[data-pitch="none"] .gauge #needle { opacity: .35; }
+.app.intune .gauge .zone { opacity: 1; filter: drop-shadow(0 0 7px var(--good)); }
+.app.intune .gauge .needle-line { stroke: var(--good); }
+.app.intune .gauge .needle-tip { fill: var(--good); }
+
+/* the cat at the needle's pivot */
+.cat-fur { fill: var(--cat); stroke: var(--cat); stroke-width: 3; stroke-linejoin: round; transition: fill .3s, stroke .3s; }
+.cat-ink { fill: var(--bg); }
+.cat-shine { fill: var(--cat); }
+.cat-line { fill: none; stroke: var(--bg); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cat-pink { fill: var(--accent); }
+.whisker { stroke: var(--cat); stroke-width: 1.4; stroke-linecap: round; opacity: .7; }
+.blush { fill: var(--accent); opacity: 0; transition: opacity .2s; }
+.eyes-sleep, .eyes-happy { display: none; }
+.app[data-run="off"] .eyes-open, .app.intune .eyes-open { display: none; }
+.app[data-run="off"] .eyes-sleep { display: inline; }
+.app.intune .eyes-happy { display: inline; }
+.app.intune .blush { opacity: .6; }
+.gauge text.zzz { fill: var(--muted); font-weight: 800; text-anchor: start; display: none; }
+.app[data-run="off"] .gauge text.zzz { display: inline; animation: zzz 2.4s ease-in-out infinite; }
+.app[data-run="off"] .gauge text.zzz + text.zzz { animation-delay: .8s; }
+.cat-body { transform-box: fill-box; transform-origin: 50% 100%; }
+.app.intune .cat-body { animation: hop .5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes zzz { 0%, 100% { opacity: 0; transform: translateY(4px); } 50% { opacity: 1; transform: translateY(-2px); } }
+@keyframes hop { 0% { transform: translateY(0) scale(1, .9); } 50% { transform: translateY(-6px) scale(1); } 100% { transform: translateY(0); } }
+
+/* ---------- readouts ---------- */
+.readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
+.val { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.sub { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-height: 15px; }
+
+.status { text-align: center; min-height: 22px; margin: 18px 0 0; font-size: 16px; font-weight: 600; color: var(--muted); }
+.status.err { color: var(--accent); }
+.app.intune .status { color: var(--good); font-weight: 800; }
+.app[data-run="on"] .view-tuner .go, .view-metro[data-run="on"] .go { background: var(--surface); color: var(--text); box-shadow: 0 5px 0 var(--line); border: 2px solid var(--line); }
+.app[data-run="on"] .view-tuner .go:active, .view-metro[data-run="on"] .go:active { box-shadow: 0 1px 0 var(--line); }
+
+/* ---------- style: kawaii (default) vs classic ----------
+   The JS builds both versions of each figure; these rules show one. */
+.gauge .hub { display: none; fill: var(--accent); transition: fill .2s; }
+.app.intune .gauge .hub { fill: var(--good); }

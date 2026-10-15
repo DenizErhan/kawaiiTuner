@@ -1,0 +1,59 @@
+/* Fitting the tuner and metronome onto small phones and phones held sideways. */
+/* ---------- smaller phones ---------- */
+@media (max-height: 720px) {
+  .note { height: 116px; margin-top: 2px; }
+  .name { font-size: clamp(64px, 22vw, 100px); }
+  .name.long { font-size: clamp(48px, 16vw, 76px); }
+  .card { min-height: 78px; padding: 10px 14px; }
+  .val { font-size: 28px; }
+  .status { margin-top: 12px; }
+  .go { height: 56px; }
+  .bpm output { font-size: 54px; }
+  .round-btn { width: 52px; height: 52px; }
+  .tempo, .metro-row, .slider { margin-top: 6px; }
+}
+@media (max-height: 600px) and (orientation: portrait) {
+  .gauge { max-width: 260px; }
+  .note { height: 90px; }
+  .card { min-height: 70px; }
+}
+
+/* ---------- phones held sideways ---------- */
+@media (orientation: landscape) and (max-height: 540px) {
+  .app { max-width: 920px; }
+  .view-tuner {
+    display: grid; gap: 0 28px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto 1fr auto auto;
+    grid-template-areas: "level level" "note readouts" "gauge status" "gauge spacer" "gauge go";
+  }
+  .view-tuner .level { grid-area: level; }
+  .note { grid-area: note; height: 84px; }
+  .name { font-size: 76px; }
+  .name.long { font-size: 58px; }
+  /* fit the gauge (300x196 viewBox) into whatever height is left under the note */
+  .gauge { grid-area: gauge; max-width: min(340px, calc((100vh - 190px) * 1.53)); align-self: end; }
+  .readouts { grid-area: readouts; align-self: center; }
+  .card { min-height: 72px; padding: 8px 14px; }
+  .val { font-size: 26px; }
+  .status { grid-area: status; align-self: center; }
+  .view-tuner .spacer { grid-area: spacer; }
+  .view-tuner .go { grid-area: go; height: 54px; }
+
+  .view-metro {
+    display: grid; gap: 0 28px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto auto auto 1fr auto;
+    grid-template-areas: "cat cue" "cat dots" "cat tempo" "cat slider" "cat row" "cat spacer" "cat go";
+  }
+  .cue { grid-area: cue; }
+  .figure { grid-area: cat; height: calc(100vh - 90px); max-height: none; align-self: center; }
+  .beat-dots { grid-area: dots; }
+  .tempo { grid-area: tempo; }
+  .bpm output { font-size: 52px; }
+  .round-btn { width: 50px; height: 50px; }
+  .slider { grid-area: slider; }
+  .metro-row { grid-area: row; }
+  .view-metro .spacer { grid-area: spacer; }
+  .view-metro .go { grid-area: go; height: 54px; }
+}

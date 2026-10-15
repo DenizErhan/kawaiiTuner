@@ -121,18 +121,22 @@ try {
     const p = await ctx.newPage();
     p.on('pageerror', (e) => problems.push(e.message));
     p.on('console', (m) => { if (m.type() === 'error') problems.push(m.text()); });
-    await p.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'networkidle0' });
-    await p.click('#tabBand');
+    await p.goto(`http://127.0.0.1:${PORT}/#/band`, { waitUntil: 'networkidle0' });
     return p;
   };
   const home = (p) => p.waitForFunction(() => !document.getElementById('bandHome').hidden, { timeout: 15000 });
+  const open = (p, hash) => p.evaluate((h) => { location.hash = h; }, hash);
   try {
     const pa = await phone();
     await pa.type('#meName', 'Phone A');
     await pa.type('#bandName', 'Rules check (app)');
     await pa.click('#formCreate .go');
     await home(pa);
+    await pa.click('#btnBandMenu');
     const code = await pa.$eval('#bandCode', (e) => e.textContent);
+    await pa.click('#btnMenuDone');
+    await open(pa, '#/band/songs');
+    await pa.waitForSelector('#btnAddSong', { visible: true });
     await pa.click('#btnAddSong');
     await pa.type('#songForm [name="title"]', 'Live check song');
     await pa.type('#songForm [name="bpm"]', '99');
@@ -145,8 +149,10 @@ try {
     await pb.type('#joinCode', code);
     await pb.click('#formJoin .go');
     await home(pb);
+    await open(pb, '#/band/songs');
     await pb.waitForFunction(() => document.getElementById('songList').textContent.includes('Live check song'), { timeout: 15000 });
     report(true, 'phone B joins with the code and sees the song');
+    await open(pa, '#/band');
     await pa.waitForFunction(() => document.getElementById('bandMembers').textContent.includes('Phone B'), { timeout: 15000 });
     report(true, 'phone A sees phone B join, live');
   } catch (e) {
