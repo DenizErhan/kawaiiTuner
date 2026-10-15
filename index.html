@@ -123,6 +123,7 @@
         <div class="band-head-text">
           <h2 class="band-title" id="bandTitle"></h2>
           <p class="band-members" id="bandMembers"></p>
+          <button class="link-btn" id="btnRename">Change your name</button>
         </div>
         <button class="code-chip" id="btnShare" aria-label="Share the band code"><small>Code</small><span id="bandCode"></span></button>
       </div>
@@ -226,7 +227,7 @@
 <dialog class="pop" id="nameDialog" aria-labelledby="nameDialogTitle">
   <form method="dialog" id="nameForm">
     <h2 id="nameDialogTitle">New setlist</h2>
-    <label class="field"><span>Name</span><input name="name" maxlength="60" required autocomplete="off" placeholder="Friday at the pub"></label>
+    <label class="field"><span>Name</span><input name="name" maxlength="60" required autocomplete="off"></label>
     <div class="pop-actions">
       <button type="button" class="ghost danger" id="btnDeleteSetlist">Delete setlist</button>
       <button type="button" class="ghost" id="btnCancelName">Cancel</button>

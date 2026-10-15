@@ -392,6 +392,20 @@ try {
     await waitHome();
     expect((await text('#bandTitle')) === 'The Purrs', 'band not reopened');
   });
+  await test('Change your name renames you in the band', async () => {
+    await tap('#btnRename'); await sleep(300);
+    expect((await text('#nameDialogTitle')) === 'Your name', 'title: ' + await text('#nameDialogTitle'));
+    expect((await page.$eval('#nameForm [name="name"]', (e) => e.value)) === 'Deniz', 'current name not filled in');
+    expect(await hidden('#btnDeleteSetlist'), 'delete button shown');
+    await shot('band-rename');
+    await typeInto('#nameForm [name="name"]', 'Denny');
+    await tap('#nameForm .go'); await sleep(250);
+    expect((await text('#bandMembers')) === 'Denny (you)', 'members: ' + await text('#bandMembers'));
+    await tap('#btnRename'); await sleep(300); // and back, for the tests below
+    await typeInto('#nameForm [name="name"]', 'Deniz');
+    await tap('#nameForm .go'); await sleep(250);
+    expect((await text('#bandMembers')) === 'Deniz (you)', 'members: ' + await text('#bandMembers'));
+  });
   await test('Leave band goes back to the setup screen', async () => {
     await tap('#btnLeave'); await sleep(250);
     expect(!(await hidden('#bandSetup')), 'setup not shown');

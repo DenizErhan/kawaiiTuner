@@ -7,6 +7,7 @@ import { LIMITS, normalizeCode, cleanText, cleanSong, songMeta, moveItem, byName
 import { connect, friendlyError } from './band-store.js';
 
 const $ = (id) => document.getElementById(id);
+const ME = 'me'; // openNameDialog target for your own name (setlist ids are 20 chars)
 const ICONS = {
   edit: 'M4 20h4L19 9l-4-4L4 16v4zM14 6l4 4',
   up: 'M6 15l6-6 6 6',
@@ -276,21 +277,27 @@ export function createBandPanel({ metronome, openTab }) {
     $('songDialog').close();
   }
 
+  /** id: the setlist to rename, null for a new one, or ME for your own name. */
   function openNameDialog(id) {
     naming = id;
-    const f = $('nameForm');
-    f.elements.name.value = id ? listById(id).name : '';
-    $('nameDialogTitle').textContent = id ? 'Setlist' : 'New setlist';
-    $('btnDeleteSetlist').hidden = !id;
+    const me = id === ME;
+    const input = $('nameForm').elements.name;
+    const mine = members.find((m) => m.id === api.uid);
+    input.value = me ? (mine ? mine.name : settings.me) : id ? listById(id).name : '';
+    input.maxLength = me ? LIMITS.member : LIMITS.setlist;
+    input.placeholder = me ? 'How the band sees you' : 'Friday at the pub';
+    $('nameDialogTitle').textContent = me ? 'Your name' : id ? 'Setlist' : 'New setlist';
+    $('btnDeleteSetlist').hidden = !id || me;
     $('nameDialog').showModal();
-    f.elements.name.focus();
+    input.focus();
   }
 
   function saveName(e) {
     e.preventDefault();
-    const name = cleanText($('nameForm').elements.name.value, LIMITS.setlist);
+    const name = cleanText($('nameForm').elements.name.value, naming === ME ? LIMITS.member : LIMITS.setlist);
     if (!name) return;
-    if (naming) write(api.updateSetlist(code, naming, { name }));
+    if (naming === ME) { setMe(name); write(api.renameMe(code, name)); }
+    else if (naming) write(api.updateSetlist(code, naming, { name }));
     else {
       const { id, done } = api.newSetlist(code, name);
       write(done);
@@ -340,6 +347,7 @@ export function createBandPanel({ metronome, openTab }) {
   $('formJoin').addEventListener('submit', (e) => { e.preventDefault(); submitSetup('join'); });
   $('formCreate').addEventListener('submit', (e) => { e.preventDefault(); submitSetup('create'); });
   $('btnShare').addEventListener('click', share);
+  $('btnRename').addEventListener('click', () => openNameDialog(ME));
   $('btnLeave').addEventListener('click', () => {
     if (!confirm('Leave ' + band.name + '? You can join again later with the code ' + code + '.')) return;
     write(api.leaveBand(code));

@@ -78,6 +78,8 @@ function createApi(F, db, uid) {
     },
 
     leaveBand: (code) => F.deleteDoc(memberRef(code)),
+    /** Changes how you're listed in this band. */
+    renameMe: (code, name) => F.updateDoc(memberRef(code), { name }),
 
     /** Live updates of one band. on: { band(data|null), members(rows), songs(rows), setlists(rows), error(e) }.
         Returns a function that stops listening. */
