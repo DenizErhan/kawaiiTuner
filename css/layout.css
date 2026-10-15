@@ -12,7 +12,22 @@
   .round-btn { width: 52px; height: 52px; }
   .tempo, .metro-row, .slider { margin-top: 6px; }
 }
+@media (max-height: 720px) {
+  .has-strings .note { height: 86px; }
+  .has-strings .gauge { max-width: 270px; }
+  .has-strings .card { min-height: 68px; padding: 8px 14px; }
+  .has-strings .val { font-size: 26px; }
+  .has-strings .status { margin-top: 8px; }
+  .has-strings .spacer { height: 10px; }
+  .has-strings .name { font-size: clamp(56px, 18vw, 84px); }
+  .tuning { margin-top: 6px; gap: 6px; }
+}
 @media (max-height: 600px) and (orientation: portrait) {
+  .has-strings .note { height: 68px; }
+  .has-strings .name { font-size: 56px; }
+  .has-strings .gauge { max-width: 220px; }
+  .has-strings .card { min-height: 58px; }
+  .has-strings .val { font-size: 22px; }
   .gauge { max-width: 260px; }
   .note { height: 90px; }
   .card { min-height: 70px; }
@@ -24,10 +39,12 @@
   .view-tuner {
     display: grid; gap: 0 28px;
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto 1fr auto auto;
-    grid-template-areas: "level level" "note readouts" "gauge status" "gauge spacer" "gauge go";
+    grid-template-rows: auto auto auto 1fr auto auto;
+    grid-template-areas: "level level" "note tuning" "gauge readouts" "gauge status" "gauge spacer" "gauge go";
   }
   .view-tuner .level { grid-area: level; }
+  .tuning { grid-area: tuning; margin-top: 6px; }
+  .has-strings .note { height: 84px; }
   .note { grid-area: note; height: 84px; }
   .name { font-size: 76px; }
   .name.long { font-size: 58px; }

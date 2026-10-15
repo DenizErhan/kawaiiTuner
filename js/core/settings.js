@@ -1,5 +1,6 @@
 /* Themes and user settings, persisted in localStorage. Names shown to the
    user (themes, colors, patterns) are in the language files under js/i18n. */
+import { cleanCustom } from './tunings.js';
 
 export const THEMES = {
   midnight:   { deco: 'stars',   bg: '#141128', surface: '#211c3d', text: '#f6f0ff', accent: '#ff8fc8', good: '#7cf5c4', cat: '#f6f0ff' },
@@ -22,7 +23,7 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 function pickTheme(t) { const o = { deco: t.deco }; COLOR_KEYS.forEach((k) => { o[k] = t[k]; }); return o; }
 function defaults() {
-  return { theme: DEFAULT_THEME, custom: pickTheme(THEMES[DEFAULT_THEME]), a4: A4_DEFAULT, notation: 'en', mode: 'tuner', bpm: BPM_DEFAULT, beats: 4, kawaii: true, me: '', band: null, lang: null };
+  return { theme: DEFAULT_THEME, custom: pickTheme(THEMES[DEFAULT_THEME]), a4: A4_DEFAULT, notation: 'en', mode: 'tuner', bpm: BPM_DEFAULT, beats: 4, kawaii: true, me: '', band: null, lang: null, tuning: 'chromatic', customTunings: [] };
 }
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const clampA4 = (v) => clamp(v, A4_MIN, A4_MAX);
@@ -48,6 +49,8 @@ function load() {
       if (typeof raw.me === 'string') s.me = raw.me;
       if (raw.band && typeof raw.band.code === 'string') s.band = { code: raw.band.code };
       if (typeof raw.lang === 'string') s.lang = raw.lang;
+      if (typeof raw.tuning === 'string' && /^[\w.]{1,40}$/.test(raw.tuning)) s.tuning = raw.tuning;
+      s.customTunings = cleanCustom(raw.customTunings);
     }
   } catch (e) { /* storage unavailable or corrupt: use defaults */ }
   return s;
@@ -57,10 +60,10 @@ function load() {
 export const settings = load();
 
 export function save() { try { localStorage.setItem(KEY, JSON.stringify(settings)); } catch (e) { /* ignore */ } }
-// Reset the look and tuner settings; keep the open screen, the metronome tempo, the band and the language.
+// Reset the look and tuner settings; keep the open screen, the metronome tempo, the band, the language and tunings.
 export function reset() {
-  const { mode, bpm, beats, me, band, lang } = settings;
-  Object.assign(settings, defaults(), { mode, bpm, beats, me, band, lang });
+  const { mode, bpm, beats, me, band, lang, tuning, customTunings } = settings;
+  Object.assign(settings, defaults(), { mode, bpm, beats, me, band, lang, tuning, customTunings });
   save();
 }
 
@@ -89,3 +92,15 @@ export function setBeats(v) { settings.beats = clamp(v, BEATS_MIN, BEATS_MAX); s
 export function setMe(v) { settings.me = v; save(); }
 export function setBand(code) { settings.band = code ? { code } : null; save(); }
 export function setLangSetting(code) { settings.lang = code; save(); }
+export function setTuning(id) { settings.tuning = id; save(); }
+/** Adds or replaces one of your own tunings ({ id, name, strings }). */
+export function saveCustomTuning(t) {
+  const i = settings.customTunings.findIndex((x) => x.id === t.id);
+  if (i >= 0) settings.customTunings[i] = t; else settings.customTunings.push(t);
+  save();
+}
+export function deleteCustomTuning(id) {
+  settings.customTunings = settings.customTunings.filter((x) => x.id !== id);
+  if (settings.tuning === 'custom.' + id) settings.tuning = 'chromatic';
+  save();
+}

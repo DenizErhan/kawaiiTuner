@@ -10,6 +10,7 @@ import {
   overlaps, best, suggest, cleanPoll, tally, toggleVote, leader,
 } from '../js/core/plan.js';
 import { THEMES, COLOR_KEYS, DECOS } from '../js/core/settings.js';
+import { TUNINGS, INSTRUMENTS, midi, noteName, nearestString, centsFrom, findTuning, cleanCustom } from '../js/core/tunings.js';
 import { t, setLang, pickLang, ALL } from '../js/i18n/i18n.js';
 import { html } from '../js/ui/html.js';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -227,6 +228,43 @@ test('plan limits match firestore.rules', () => {
   assert.ok(rules.includes(`text(request.resource.data.name, 1, ${LIMITS.band})`), 'band name');
 });
 
+console.log('tunings');
+test('note names to MIDI numbers', () => {
+  assert.equal(midi('A4'), 69);
+  assert.equal(midi('E2'), 40);
+  assert.equal(midi('F#3'), 54);
+  assert.equal(midi('Bb3'), 58);
+  assert.equal(midi('B0'), 23);
+});
+test('every tuning has 4-6 strings in a sensible range; names and flats', () => {
+  for (const [id, tn] of Object.entries(TUNINGS)) {
+    assert.ok(tn.strings.length >= 4 && tn.strings.length <= 6, id);
+    assert.ok(tn.strings.every((m) => m >= midi('B0') && m <= midi('E5')), id);
+  }
+  assert.deepEqual(TUNINGS['guitar.dropD'].strings.map((m) => noteName(m).name), ['D', 'A', 'D', 'G', 'B', 'E']);
+  assert.deepEqual(TUNINGS['guitar.halfDown'].strings.map((m) => noteName(m, 'en', true).name), ['E♭', 'A♭', 'D♭', 'G♭', 'B♭', 'E♭']);
+  assert.equal(noteName(midi('E2'), 'sol').name + noteName(midi('E2')).oct, 'Mi2');
+});
+test('nearest string, and cents from it', () => {
+  const std = TUNINGS['guitar.standard'].strings;
+  assert.equal(nearestString(82.41, std, 440).index, 0); // low E
+  assert.equal(nearestString(110, std, 440).index, 1);   // A
+  const r = nearestString(329.63 * Math.pow(2, 10 / 1200), std, 440); // high E, 10 cents sharp
+  assert.equal(r.index, 5);
+  assert.ok(Math.abs(r.cents - 10) < 0.1, String(r.cents));
+  // drop D: a low string still at E is 200 cents sharp of D
+  assert.ok(Math.abs(centsFrom(82.41, midi('D2'), 440) - 200) < 1);
+  assert.ok(Math.abs(centsFrom(220, midi('A3'), 432) - 31.8) < 0.5, 'A4 = 432 shifts every target');
+});
+test('your own tunings are found, and broken saved ones dropped', () => {
+  const mine = [{ id: 'k1', name: ' Nashville ', strings: [52, 57, 62, 67, 71, 76] }];
+  assert.equal(findTuning('custom.k1', cleanCustom(mine)).name, 'Nashville');
+  assert.equal(findTuning('chromatic'), null);
+  assert.equal(findTuning('custom.gone', mine), null);
+  assert.deepEqual(cleanCustom([{ id: 'x', name: 'Bad', strings: [500] }, { id: 'y', name: '', strings: [40] }, 'junk', null]), []);
+  assert.equal(cleanCustom('nope').length, 0);
+});
+
 console.log('i18n');
 const jsFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((d) => {
   const p = join(dir, d.name);
@@ -254,6 +292,8 @@ test('keys built at runtime (themes, colors, patterns) exist too', () => {
     COLOR_KEYS.forEach((k) => assert.ok(find(dict, 'settings.colorNames.' + k), code + ' color ' + k));
     DECOS.forEach((k) => assert.ok(find(dict, 'settings.decos.' + k), code + ' pattern ' + k));
     for (const sub of ['polls', 'calendar', 'songs', 'setlists']) assert.ok(find(dict, 'band.home.' + sub) && find(dict, 'nav.' + sub), code + ' ' + sub);
+    Object.keys(TUNINGS).forEach((id) => assert.ok(find(dict, 'tuner.tunings.' + id), code + ' tuning ' + id));
+    INSTRUMENTS.concat('custom').forEach((k) => assert.ok(find(dict, 'tuner.instruments.' + k), code + ' instrument ' + k));
   }
 });
 test('every language has every English text, with the same {placeholders}', () => {

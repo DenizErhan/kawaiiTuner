@@ -83,3 +83,41 @@
    The JS builds both versions of each figure; these rules show one. */
 .gauge .hub { display: none; fill: var(--accent); transition: fill .2s; }
 .app.intune .gauge .hub { fill: var(--good); }
+
+/* ---------- tuning and strings ---------- */
+.tuning { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 10px; }
+.tuning-chip {
+  display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 34px; padding: 0 10px 0 14px;
+  color: var(--text); background: var(--surface); border: 2px solid var(--line); border-radius: 999px; font-size: 14px; font-weight: 800;
+}
+.tuning-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tuning-chip .ico { color: var(--muted); }
+.strings { display: flex; justify-content: center; gap: 6px; width: 100%; }
+.string {
+  position: relative; flex: 1 1 0; min-width: 0; max-width: 46px; aspect-ratio: 1; padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1;
+  color: var(--text); background: var(--surface); border: 2px solid var(--line); border-radius: 50%;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.string b { font-size: 15px; }
+.string small { font-size: 10px; font-weight: 700; color: var(--muted); }
+.string.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.app.intune .string.on { border-color: var(--good); box-shadow: 0 0 0 2px var(--good); }
+.string[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.string[aria-pressed="true"] small { color: var(--bg); }
+.string.done::after {
+  content: "¹3"; position: absolute; top: -5px; right: -5px; width: 17px; height: 17px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--good); color: var(--bg); font-size: 10px; font-weight: 800;
+}
+.has-strings .note { height: 112px; margin-top: 0; }
+
+/* the tuning list and the editor for your own tunings */
+.tuning-group + .tuning-group { margin-top: 18px; }
+.tuning-group .list { margin-top: 0; }
+.tuning-group .add-btn { width: 100%; margin-top: 8px; }
+.string-edit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.string-row { display: flex; align-items: center; gap: 6px; }
+.string-no { flex: 1; font-size: 15px; font-weight: 700; }
+.string-note { width: 60px; text-align: center; font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.string-row .row-icon { width: 46px; height: 42px; border: 2px solid var(--line); }
+.string-count { display: flex; gap: 20px; margin-top: 6px; }

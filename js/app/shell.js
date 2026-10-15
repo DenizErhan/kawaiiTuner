@@ -2,7 +2,8 @@
    the screen's own buttons) and the ☰ menu, a modal <dialog> sliding in from
    the left, so the phone's back button and Esc close it.
    Screens plug in as { id, el, head(route), show(route), hide() };
-   head() returns { title, up?: address for the back arrow, actions?: [buttons] }. */
+   head() returns { title, up?: address for the back arrow, actions?: [buttons],
+   modes?: true to show the Tuner | Metronome switch in place of the title }. */
 import { t } from '../i18n/i18n.js';
 import { html, render } from '../ui/html.js';
 import { icon } from '../ui/icons.js';
@@ -16,6 +17,10 @@ const header = () => html`
     </button>
     <button class="icon-btn" id="btnUp" aria-label="${t('nav.back')}" hidden>${icon('back')}</button>
     <h1 class="top-title" id="topTitle"></h1>
+    <nav class="mode-switch" id="modeSwitch" aria-label="${t('nav.modes')}" hidden>
+      <a href="${path('tuner')}" data-route="tuner">${t('nav.tuner')}</a>
+      <a href="${path('metronome')}" data-route="metronome">${t('nav.metronome')}</a>
+    </nav>
     <div class="top-actions" id="topActions"></div>
   </header>`;
 
@@ -65,6 +70,12 @@ export function createShell(app, { openSettings }) {
   function drawHead() {
     const h = current.head(route);
     $('topTitle').textContent = h.title || '';
+    $('topTitle').classList.toggle('sr-only', !!h.modes); // the switch shows it instead
+    $('modeSwitch').hidden = !h.modes;
+    $('modeSwitch').querySelectorAll('a').forEach((a) => {
+      if (a.dataset.route === route.view) a.setAttribute('aria-current', 'page');
+      else a.removeAttribute('aria-current');
+    });
     upTo = h.up || null;
     $('btnMenu').hidden = !!upTo;
     $('btnUp').hidden = !upTo;

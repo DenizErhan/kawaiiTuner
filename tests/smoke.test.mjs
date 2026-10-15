@@ -54,6 +54,7 @@ const problems = []; // console errors, page errors, failed requests
 const page = await browser.newPage();
 page.on('console', (m) => { if (m.type() === 'error') problems.push('console: ' + m.text()); });
 page.on('pageerror', (e) => problems.push('page error: ' + e.message));
+page.on('dialog', (d) => d.accept()); // "Delete …?" / "Leave …?" confirms
 page.on('requestfailed', (r) => problems.push('request failed: ' + r.url()));
 page.on('response', (r) => { if (r.status() >= 400) problems.push(`HTTP ${r.status()}: ${r.url()}`); });
 
@@ -116,7 +117,7 @@ try {
   });
   await test('opens on the tuner, with its address', async () => {
     expect((await hash()) === '#/tuner', 'hash: ' + await hash());
-    expect((await text('#topTitle')) === 'Tuner', 'title: ' + await text('#topTitle'));
+    expect((await text('#modeSwitch [aria-current="page"]')) === 'Tuner', 'switch: ' + await text('#modeSwitch'));
   });
   await test('version label is shown', async () => expect(/Version \d/.test(await text('#version')), 'no version text'));
   await test('service worker takes control', async () => {
@@ -161,14 +162,84 @@ try {
     expect((await text('#btnGoLabel')) === 'Start', 'still says Stop');
     expect((await text('#hzVal')) === '—', 'frequency not cleared');
   });
+  const stringNames = () => page.$$eval('#strings .string', (bs) => bs.map((b) => b.textContent).join(' '));
+  await test('the tuning picker lists instruments; Drop D shows its strings', async () => {
+    expect((await text('#tuningName')) === 'Chromatic' && await hidden('#strings'), 'should start chromatic');
+    await tap('#btnTuning'); await sleep(350);
+    expect(await isOpen('#tuningDialog'), 'picker not open');
+    const groups = await page.$$eval('#tuningList h3', (hs) => hs.map((h) => h.textContent).join(','));
+    expect(groups === 'Chromatic,Guitar,Bass,Ukulele,Violin,Mandolin,Banjo,My tunings', 'groups: ' + groups);
+    await shot('tuning-picker');
+    await tap('#tuningList [data-tuning="guitar.dropD"]'); await sleep(300);
+    expect(!(await isOpen('#tuningDialog')), 'picker still open');
+    expect((await text('#tuningName')) === 'Guitar · Drop D', 'chip: ' + await text('#tuningName'));
+    expect((await stringNames()) === 'D2 A2 D3 G3 B3 E4', 'strings: ' + await stringNames());
+    await noOverflow(); await inView('#btnGo');
+    await shot('tuner-drop-d');
+  });
+  await test('Half step down names its strings with flats', async () => {
+    await tap('#btnTuning'); await sleep(350);
+    await tap('#tuningList [data-tuning="guitar.halfDown"]'); await sleep(300);
+    expect((await stringNames()) === 'E♭2 A♭2 D♭3 G♭3 B♭3 E♭4', 'strings: ' + await stringNames());
+  });
+  await test('tapping a string locks it, tapping again lets go', async () => {
+    await tap('#strings .string:nth-child(1)'); await sleep(100);
+    expect((await page.$eval('#strings .string:nth-child(1)', (b) => b.getAttribute('aria-pressed'))) === 'true', 'not locked');
+    await tap('#strings .string:nth-child(1)'); await sleep(100);
+    expect((await page.$$('#strings [aria-pressed="true"]')).length === 0, 'still locked');
+  });
+  await test('your own tuning: make it, it is remembered, then delete it', async () => {
+    await tap('#btnTuning'); await sleep(350);
+    await tap('#btnNewTuning'); await sleep(350);
+    expect((await page.$$('#customStrings li')).length === 6, 'should start from the current tuning');
+    await tap('#customForm .go'); await sleep(150);
+    expect(/name/.test(await text('#customErr')), 'saved without a name');
+    await page.type('#customForm [name="name"]', 'Low B');
+    await tap('#customStrings li:nth-child(1) [data-d="-1"]'); // E♭2 -> D2
+    await tap('#customStrings li:nth-child(1) [data-d="-1"]'); // -> C♯2
+    await tap('#btnDropString'); await tap('#btnAddString');
+    await shot('tuning-custom');
+    await tap('#customForm .go'); await sleep(300);
+    expect(!(await isOpen('#customDialog')), 'editor still open');
+    expect((await text('#tuningName')) === 'Low B', 'chip: ' + await text('#tuningName'));
+    expect((await stringNames()).startsWith('C♯2 G♯2'), 'strings: ' + await stringNames()); // your own tunings use sharps
+    await page.reload({ waitUntil: 'networkidle0' });
+    expect((await text('#tuningName')) === 'Low B', 'not remembered');
+    await tap('#btnTuning'); await sleep(350);
+    await tap('#tuningList [data-edit]'); await sleep(350);
+    await tap('#btnDeleteTuning'); await sleep(300);
+    expect((await text('#tuningName')) === 'Chromatic', 'deleting did not fall back to chromatic');
+    await page.keyboard.press('Escape'); await sleep(200);
+  });
+  await test('with a tuning, Start lights up the string it hears', async () => {
+    await tap('#btnTuning'); await sleep(350);
+    await tap('#tuningList [data-tuning="guitar.dropD"]'); await sleep(300);
+    await tap('#btnGo');
+    await page.waitForFunction(() => document.querySelector('#strings .string.on'), { timeout: 6000 });
+    const note = await text('#noteName');
+    expect(['D', 'A', 'G', 'B', 'E'].includes(note), 'big note is not a string note: ' + note);
+    await shot('tuner-strings-running');
+    await tap('#btnGo'); await sleep(200);
+    expect((await page.$$('#strings .string.on')).length === 0, 'string still lit after Stop');
+  });
 
   console.log('metronome');
   await test('the menu opens the metronome', async () => {
     await nav('metronome');
     expect(await page.$eval('#viewMetro', (e) => !e.hidden), 'metronome view hidden');
     expect(await page.$eval('#viewTuner', (e) => e.hidden), 'tuner view still visible');
-    expect((await hash()) === '#/metronome' && (await text('#topTitle')) === 'Metronome', 'address or title wrong');
+    expect((await hash()) === '#/metronome', 'address: ' + await hash());
     await shot('metronome-idle');
+  });
+  await test('the top bar switches between tuner and metronome', async () => {
+    expect(!(await hidden('#modeSwitch')) && await page.$eval('#topTitle', (e) => e.classList.contains('sr-only')), 'switch not shown in place of the title');
+    expect((await page.$eval('#modeSwitch [aria-current="page"]', (a) => a.dataset.route)) === 'metronome', 'metronome not marked');
+    await tap('#modeSwitch a[data-route="tuner"]'); await sleep(250);
+    expect(await page.$eval('#viewTuner', (e) => !e.hidden), 'tuner not shown');
+    await tap('#modeSwitch a[data-route="metronome"]'); await sleep(250);
+    expect(await page.$eval('#viewMetro', (e) => !e.hidden), 'metronome not shown');
+    await page.goBack(); await sleep(250); // undo the two taps, so the next test sees the same history
+    await page.goBack(); await sleep(250);
   });
   await test('the back button goes back to the tuner', async () => {
     await page.goBack(); await sleep(250);
@@ -239,7 +310,14 @@ try {
   });
   await test('tap tempo: 5 taps 0.5 s apart give about 120 BPM', async () => {
     await page.$eval('#bpmSlider', (s) => { s.value = 60; s.dispatchEvent(new Event('input', { bubbles: true })); });
-    for (let i = 0; i < 5; i++) { await tap('#btnTap'); await sleep(500); }
+    await page.evaluate(() => new Promise((done) => { // timed inside the page, so test-runner lag doesn't skew it
+      const b = document.getElementById('btnTap');
+      let n = 0;
+      const id = setInterval(() => {
+        b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
+        if (++n === 5) { clearInterval(id); done(); }
+      }, 500);
+    }));
     const bpm = Number(await text('#bpmVal'));
     expect(Math.abs(bpm - 120) <= 6, 'got ' + bpm);
   });
@@ -328,7 +406,7 @@ try {
     expect((await page.$$('#langs button')).length === 2, 'no language picker');
     await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), tap('#langs button[data-v="tr"]')]);
     expect(await page.evaluate(() => document.documentElement.lang) === 'tr', 'page language not tr');
-    expect((await text('#topTitle')) === 'Akort' && (await text('#btnGoLabel')) === 'Başlat', 'not in Turkish: ' + await text('#topTitle'));
+    expect((await text('#modeSwitch a[data-route="tuner"]')) === 'Akort' && (await text('#btnGoLabel')) === 'Başlat', 'not in Turkish: ' + await text('#modeSwitch'));
     await tap('#btnMenu'); await sleep(350);
     expect((await text('#drawer a[data-route="metronome"]')) === 'Metronom', 'menu not in Turkish');
     await shot('turkish-menu');
@@ -338,7 +416,7 @@ try {
     expect((await text('#sheetTitle')) === 'Ayarlar', 'settings not in Turkish');
     await shot('turkish-settings');
     await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), tap('#langs button[data-v="en"]')]);
-    expect((await text('#topTitle')) === 'Tuner', 'did not switch back');
+    expect((await text('#modeSwitch a[data-route="tuner"]')) === 'Tuner', 'did not switch back');
   });
 
   console.log('band');
@@ -351,7 +429,6 @@ try {
     if (m && FAKE_SDK[m[1]]) r.respond({ status: 200, contentType: 'text/javascript', headers: { 'Access-Control-Allow-Origin': '*' }, body: FAKE_SDK[m[1]] });
     else r.continue();
   });
-  page.on('dialog', (d) => d.accept()); // "Delete …?" / "Leave …?" confirms
 
   const typeInto = async (sel, value) => {
     await page.$eval(sel, (e) => { e.value = ''; });

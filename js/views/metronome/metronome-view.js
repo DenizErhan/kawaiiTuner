@@ -153,7 +153,7 @@ export function createMetronomeView(parent) {
   return {
     id: 'metronome',
     el: view,
-    head: () => ({ title: t('nav.metronome') }),
+    head: () => ({ title: t('nav.metronome'), modes: true }),
     show() {},
     hide: stop,
     load,

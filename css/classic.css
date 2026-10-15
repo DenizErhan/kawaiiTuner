@@ -77,3 +77,7 @@
 :root[data-style="classic"] .menu-item { border-width: 1px; border-radius: 12px; }
 :root[data-style="classic"] .drawer { border-width: 1px; border-radius: 0 20px 20px 0; }
 :root[data-style="classic"] .home-card { box-shadow: none; }
+:root[data-style="classic"] .mode-switch { border-width: 1px; border-radius: 12px; }
+:root[data-style="classic"] .mode-switch a { border-radius: 9px; font-weight: 700; }
+:root[data-style="classic"] .tuning-chip { border-width: 1px; border-radius: 10px; }
+:root[data-style="classic"] .string { border-width: 1px; }

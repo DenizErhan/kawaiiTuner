@@ -34,16 +34,16 @@ export function showIdle(running) {
   setStatus(t(running ? 'tuner.listening' : 'tuner.idle'));
 }
 
-/** note: result of noteFromFreq(); names: the 12 note names to display. */
-export function showPitch(freq, note, names) {
+/** note: { name, oct, cents, target } — the nearest note, or the string being tuned.
+    Returns whether it counts as in tune. */
+export function showPitch(freq, note) {
   const c = note.cents;
   inTune = inTune ? Math.abs(c) <= IN_EXIT : Math.abs(c) <= IN_ENTER;
   app.dataset.pitch = 'on';
   app.classList.toggle('intune', inTune);
-  const name = names[note.idx];
   const nameEl = $('noteName');
-  nameEl.textContent = name;
-  nameEl.classList.toggle('long', name.length > 2);
+  nameEl.textContent = note.name;
+  nameEl.classList.toggle('long', note.name.length > 2);
   $('noteOct').textContent = String(note.oct);
   const r = Math.round(c);
   $('centsVal').textContent = (r > 0 ? '+' : r < 0 ? '−' : '') + Math.abs(r);
@@ -52,5 +52,9 @@ export function showPitch(freq, note, names) {
   $('accFlat').classList.toggle('on', !inTune && c < 0);
   $('accSharp').classList.toggle('on', !inTune && c > 0);
   const kawaii = document.documentElement.dataset.style !== 'classic';
-  setStatus(t(inTune ? (kawaii ? 'tuner.inTuneKawaii' : 'tuner.inTune') : c < 0 ? 'tuner.tuneUp' : 'tuner.tuneDown'));
+  const semis = Math.abs(c) >= 75 ? Math.round(Math.abs(c) / 100) : 0; // a string a long way off: say by how much
+  setStatus(inTune ? t(kawaii ? 'tuner.inTuneKawaii' : 'tuner.inTune')
+    : semis >= 1 ? t(c < 0 ? 'tuner.farFlat' : 'tuner.farSharp', { n: semis })
+      : t(c < 0 ? 'tuner.tuneUp' : 'tuner.tuneDown'));
+  return inTune;
 }

@@ -37,6 +37,8 @@ Bump `VERSION` in `js/version.js`, commit, `git push`. GitHub Pages updates in a
 - A ☰ menu (slides in from the left) leads to every screen: Tuner, Metronome, the band's sections, Settings. Each screen has its own address (`#/tuner`, `#/band/polls`, …), so the phone's back button, reloads and links land in the right place. A dot on ☰ means a poll is waiting for your vote.
 - Pitch detection with the YIN algorithm (`js/core/yin.js`), about 30 Hz to 2 kHz.
 - Note name, octave, cents sharp/flat, frequency, target frequency.
+- Tunings: Chromatic (any note), or pick an instrument's tuning (guitar: Standard, Drop D, half/full step down, Drop C, Open G, Open D, DADGAD; bass 4/5-string; ukulele; violin; mandolin; banjo) or make your own. The strings show on screen; the one you're playing lights up and gets a ✓ once it's in tune. Tap a string to tune just that one (handy when it's far off, e.g. E down to D).
+- The top bar on Tuner and Metronome switches between them in one tap.
 - Needle gauge with a cat on the pivot: asleep when stopped, eyes follow the needle, hops and blushes when you're in tune (within about 5 cents).
 - Two styles, switched with **Kawaii-fy ✨** at the top of Settings (on by default). Classic: plain font, no patterns, plain needle, and a pendulum metronome whose weight slides with the tempo. Kawaii: everything below.
 - Six color themes that work in both styles (classic / kawaii names): Midnight / Midnight Neko, Rose / Strawberry Milk, Sage / Matcha Mochi, Plum / Sakura Night, Sand / Boba Tea, Ocean / Sea Kitty, plus a Custom theme (edit any color, the kitty included, and pick a background pattern: paws, hearts, stars, petals, bubbles, fish).
@@ -109,11 +111,11 @@ js/main.js            entry point: language, theme, shell, screens, routing
 js/version.js         build label shown in Settings; bump per deploy
 js/app/               router.js (#/addresses, back button), shell.js (top bar + ☰ menu)
 js/i18n/              i18n.js (t(), language choice) and one file per language (en.js, tr.js)
-js/core/              pure logic, unit-tested in Node: yin, notes, pitch-tracker, metronome
+js/core/              pure logic, unit-tested in Node: yin, notes, tunings, pitch-tracker, metronome
                       engine, band (codes, input cleanup), plan (dates, overlaps, votes), settings
 js/services/          the outside world: band-store (Firebase), mic, wake-lock
 js/ui/                shared view helpers: html`` templates (escaped), icons, dom, controls, theme
-js/views/tuner/       tuner screen, gauge with its cat, readout
+js/views/tuner/       tuner screen, gauge with its cat, readout, tuning picker + your own tunings
 js/views/metronome/   metronome screen, lucky cat, pendulum
 js/views/band/        band-view (connection, setup, home, band menu) + one module per section:
                       songs, setlists (with the metronome's setlist bar), polls, calendar
